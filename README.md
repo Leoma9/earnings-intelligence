@@ -21,8 +21,8 @@ streamlit run app.py
 
 1. **Earnings Calendar** — Finds companies reporting earnings in the next 30 days
 2. **Market Data** — Collects daily price and volume from Yahoo Finance
-3. **Google Trends** — Tracks search interest for each ticker
-4. **Attention Growth** — Compares recent vs prior interest and volume
+3. **StockTwits Mentions** — Counts daily ticker mentions on StockTwits (free, no API key)
+4. **Attention Growth** — Compares recent vs prior mentions and volume
 5. **Ranking** — Scores and ranks companies by composite attention signal
 6. **Dashboard** — Displays results in an interactive Streamlit UI
 
@@ -45,7 +45,7 @@ earnings-intelligence/
 │   ├── collectors/                 # Data fetching modules
 │   │   ├── earnings_calendar.py  # Upcoming earnings from Yahoo Finance
 │   │   ├── market_data.py        # Stock price and volume data
-│   │   └── google_trends.py      # Google Trends search interest
+│   │   └── social_mentions.py    # Daily StockTwits ticker-mention counts
 │   │
 │   ├── storage/                    # Persistence layer
 │   │   └── sqlite_store.py          # Schema, upserts, and history queries
@@ -70,9 +70,9 @@ earnings-intelligence/
 | `config/settings.py` | Central configuration: directory paths, database location, and analysis parameters |
 | `src/collectors/earnings_calendar.py` | Queries Yahoo Finance for companies with earnings in the next 30 days |
 | `src/collectors/market_data.py` | Downloads daily OHLCV data and computes volume averages |
-| `src/collectors/google_trends.py` | Fetches Google Trends interest scores via pytrends |
+| `src/collectors/social_mentions.py` | Counts daily ticker mentions via StockTwits' free, public API (no credentials needed) |
 | `src/storage/sqlite_store.py` | Creates SQLite tables and provides insert/query functions for all platform data |
-| `src/analytics/growth_ranking.py` | Calculates 1/3/7/30-day growth for search interest, volume, and price |
+| `src/analytics/growth_ranking.py` | Calculates 1/3/7/30-day growth for social mentions, volume, and price |
 | `src/analytics/scoring.py` | Canonical 0–100 attention score (single source of truth) |
 | `src/models/company.py` | `Company` dataclass representing a tracked company |
 | `scripts/refresh_data.py` | Orchestrates the full pipeline: collect → store → score → rank |
@@ -84,7 +84,7 @@ The attention score is a single 0–100 value defined in `src/analytics/scoring.
 Each 7-day growth signal is scaled to 0–100 (negative growth scores 0) and
 combined with these weights:
 
-- **50%** — Google Trends search-interest growth
+- **50%** — StockTwits mention-count growth
 - **30%** — Trading-volume growth
 - **20%** — Price momentum
 
@@ -96,7 +96,8 @@ adjustable via `AttentionScoreConfig`.
 
 - SQLite storage is local-only; it is not intended for concurrent or hosted multi-user access
 - Fixed watchlist of ~30 large-cap tickers
-- Google Trends rate-limited to 5 tickers per request
+- StockTwits' public stream only returns each symbol's ~30 most recent messages (no arbitrary date-range search), so very heavily discussed tickers can have their daily mention count saturate at that cap
+- No credentials are required for the social-mentions signal — it uses a free, public, unauthenticated StockTwits endpoint
 - Scheduling is optional and runs locally (see [AUTOMATION.md](AUTOMATION.md))
 
 ## License

@@ -89,8 +89,9 @@ the project's history.
 2. Enter a repository name, e.g. `earnings-intelligence`.
 3. Leave it **empty** — do **not** check "Add a README" (your project
    already has one; checking this creates a conflicting history).
-4. Choose **Public** (required for Streamlit Community Cloud's free tier to
-   deploy it) or **Private** if you plan to connect a paid Streamlit plan.
+4. Choose **Public** or **Private** — Streamlit Community Cloud's free tier
+   supports deploying from both. With a private repo, your source code stays
+   private while the running app is still publicly viewable at its URL.
 5. Click **Create repository**.
 6. Copy the repository URL shown on the next page — it looks like
    `https://github.com/YOUR_USERNAME/earnings-intelligence.git`.
@@ -148,9 +149,11 @@ This is a free tier — no credit card required.
      Python version must be selected here, in the deploy dialog. If you skip
      this, it may default to a newer Python version that some pinned
      packages in `requirements.txt` don't yet have prebuilt wheels for.)
-   - **Secrets:** paste the following, replacing the value with your own
-     long random string (this is your admin password for the in-app refresh
-     control — see Step 7):
+   - **Secrets:** paste the following. Replace the admin token value with
+     your own long random string (this is your admin password for the
+     in-app refresh control — see Step 7). No other credentials are
+     needed — the social-mentions signal uses StockTwits' free, public,
+     unauthenticated API:
 
      ```toml
      ADMIN_REFRESH_TOKEN = "choose-a-long-random-string-here"
@@ -196,7 +199,7 @@ placeholder value) is tracked, so collaborators know which keys to set.
 3. In the sidebar, open **Admin: refresh data**.
 4. Enter the same token you set in Secrets.
 5. Click **Run full refresh now** and wait (~30–60 seconds — it's fetching
-   live data from Yahoo Finance and Google Trends).
+   live data from Yahoo Finance and StockTwits).
 6. The page reloads with populated rankings.
 
 Visit the **Company** page (sidebar) to confirm ticker charts render too.
@@ -236,12 +239,12 @@ tier only provides the `*.streamlit.app` subdomain.
 - **Sleep after inactivity:** free apps sleep if unused for a while and wake
   up (with a short delay) on the next visit. Waking up gives it a fresh,
   empty disk — use the admin refresh panel to repopulate data.
-- **Public repositories:** free deployment requires the connected GitHub
-  repository to be public (or use Streamlit's paid tiers for private repos).
-- **Google Trends rate limits:** Google may throttle requests from cloud IP
-  ranges more aggressively than from your home network. If search-growth data
-  is consistently empty on the deployed site, that's Google's rate limiting,
-  not a bug — the site still functions using volume and price momentum.
+- **Private repositories work fine:** Streamlit Community Cloud can deploy
+  from private GitHub repos on the free tier — your source code stays
+  private, while the running app itself is still publicly viewable at its URL.
+- **Social-mention data:** no credentials required — StockTwits' public API
+  needs no signup or Secrets entry, so this signal works out of the box on
+  a fresh deploy.
 
 ---
 

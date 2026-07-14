@@ -145,25 +145,25 @@ with gauge_col:
     )
     st.plotly_chart(gauge, use_container_width=True, config={"displayModeBar": False})
 
-    st.caption("50% Google Trends growth · 30% volume growth · 20% price momentum")
+    st.caption("50% StockTwits mention growth · 30% volume growth · 20% price momentum")
     st.metric("Est. EPS", _format_value(earnings.get("estimated_eps"), "$%.2f"))
     st.metric("Est. revenue", _format_value(earnings.get("estimated_revenue"), "$%.2f"))
 
-st.subheader("Search interest history")
-trend_history = metrics.dropna(subset=["trend_score"])
-if trend_history.empty:
-    st.info("Google Trends history is unavailable for this ticker.")
+st.subheader("StockTwits mention history")
+mention_history = metrics.dropna(subset=["social_mentions"])
+if mention_history.empty:
+    st.info("StockTwits mention history is unavailable for this ticker.")
 else:
-    trends = go.Figure(
+    mentions = go.Figure(
         go.Scatter(
-            x=trend_history["date"],
-            y=trend_history["trend_score"],
+            x=mention_history["date"],
+            y=mention_history["social_mentions"],
             mode="lines",
             line=dict(color="#6ee7b7", width=2.5),
             fill="tozeroy",
             fillcolor="rgba(110, 231, 183, 0.08)",
-            hovertemplate="Trend score: %{y}<extra></extra>",
+            hovertemplate="StockTwits mentions: %{y}<extra></extra>",
         )
     )
-    trends.update_layout(**_chart_layout("Google Trends score"))
-    st.plotly_chart(trends, use_container_width=True, config={"displayModeBar": False})
+    mentions.update_layout(**_chart_layout("StockTwits mentions per day"))
+    st.plotly_chart(mentions, use_container_width=True, config={"displayModeBar": False})

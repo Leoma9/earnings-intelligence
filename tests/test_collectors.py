@@ -1,6 +1,6 @@
 """Offline unit tests for data collectors."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -8,7 +8,7 @@ import unittest
 
 import pandas as pd
 
-from src.collectors import earnings_calendar, google_trends, market_data, stock_info
+from src.collectors import earnings_calendar, market_data, social_mentions, stock_info
 
 
 class StubEarningsProvider:
@@ -34,18 +34,20 @@ class StubEarningsProvider:
         return events.get(ticker)
 
 
-class FakeTrendClient:
-    def __init__(self) -> None:
-        self.payloads: list[list[str]] = []
+def _iso_timestamp(days_ago: int) -> str:
+    moment = datetime.now(timezone.utc) - timedelta(days=days_ago)
+    return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    def build_payload(self, tickers: list[str], **_: object) -> None:
-        self.payloads.append(tickers)
 
-    def interest_over_time(self) -> pd.DataFrame:
-        return pd.DataFrame(
-            {"AAPL": [10, 20], "MSFT": [30, 40]},
-            index=pd.to_datetime(["2026-01-01", "2026-01-02"]),
-        )
+class FakeStockTwitsResponse:
+    def __init__(self, payload: dict) -> None:
+        self._payload = payload
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict:
+        return self._payload
 
 
 class CollectorTests(unittest.TestCase):
@@ -91,19 +93,50 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(result["ticker"].unique().tolist(), ["AAPL"])
         self.assertEqual(result.iloc[-1]["price_change_pct"], 10.0)
 
-    @patch("src.collectors.google_trends.time.sleep")
-    @patch("src.collectors.google_trends.TrendReq")
-    def test_google_trends_collector_formats_daily_scores(self, trend_request, sleep_mock) -> None:
-        client = FakeTrendClient()
-        trend_request.return_value = client
+    @patch("src.collectors.social_mentions.time.sleep")
+    @patch("src.collectors.social_mentions.requests.get")
+    def test_social_mentions_collector_counts_daily_mentions(
+        self, get_mock, sleep_mock
+    ) -> None:
+        payloads_by_ticker = {
+            "AAPL": {
+                "response": {"status": 200},
+                "messages": [
+                    {"created_at": _iso_timestamp(0)},
+                    {"created_at": _iso_timestamp(0)},
+                ],
+            },
+            "MSFT": {
+                "response": {"status": 200},
+                "messages": [{"created_at": _iso_timestamp(1)}],
+            },
+        }
+        get_mock.side_effect = lambda url, **_: FakeStockTwitsResponse(
+            payloads_by_ticker[url.rsplit("/", 1)[-1].removesuffix(".json")]
+        )
 
-        result = google_trends.fetch_trends_interest([" aapl ", "msft"], lookback_days=7)
+        result = social_mentions.fetch_social_mentions(
+            [" aapl ", "msft"], lookback_days=7
+        )
 
-        self.assertEqual(list(result.columns), ["date", "ticker", "trend_score"])
-        self.assertEqual(len(result), 4)
-        self.assertEqual(client.payloads, [["AAPL", "MSFT"]])
-        self.assertEqual(result.iloc[0]["trend_score"], 10)
+        self.assertEqual(list(result.columns), ["date", "ticker", "social_mentions"])
+        aapl_row = result[result["ticker"] == "AAPL"].iloc[0]
+        self.assertEqual(aapl_row["social_mentions"], 2)
+        msft_row = result[result["ticker"] == "MSFT"].iloc[0]
+        self.assertEqual(msft_row["social_mentions"], 1)
         sleep_mock.assert_called()
+
+    @patch("src.collectors.social_mentions.time.sleep")
+    @patch("src.collectors.social_mentions.requests.get")
+    def test_social_mentions_collector_skips_failed_ticker(
+        self, get_mock, sleep_mock
+    ) -> None:
+        get_mock.side_effect = RuntimeError("network unavailable")
+
+        result = social_mentions.fetch_social_mentions(["AAPL"])
+
+        self.assertTrue(result.empty)
+        self.assertEqual(list(result.columns), ["date", "ticker", "social_mentions"])
 
     @patch("src.collectors.stock_info._fetch_single_ticker")
     def test_stock_info_normalizes_symbols_and_continues_after_failure(self, fetch_mock) -> None:

@@ -54,7 +54,7 @@ class SQLiteStore:
                     volume INTEGER,
                     avg_volume_30d REAL,
                     price_change_pct REAL,
-                    trend_score INTEGER,
+                    social_mentions INTEGER,
                     PRIMARY KEY (ticker, metric_date)
                 );
 
@@ -62,10 +62,10 @@ class SQLiteStore:
                     ticker TEXT NOT NULL REFERENCES companies(ticker),
                     calculation_date TEXT NOT NULL,
                     attention_score REAL NOT NULL,
-                    trends_growth_pct REAL,
+                    social_growth_pct REAL,
                     volume_growth_pct REAL,
                     price_growth_pct REAL,
-                    trends_points REAL,
+                    social_points REAL,
                     volume_points REAL,
                     price_points REAL,
                     PRIMARY KEY (ticker, calculation_date)
@@ -138,7 +138,7 @@ class SQLiteStore:
             )
 
     def upsert_daily_metrics(self, metrics: pd.DataFrame) -> None:
-        """Store price, volume, and/or Google Trends values by ticker and date."""
+        """Store price, volume, and/or social-mention values by ticker and date."""
         if metrics.empty:
             return
         self._ensure_companies(metrics["ticker"].unique())
@@ -150,7 +150,7 @@ class SQLiteStore:
                 _value(row, "volume"),
                 _value(row, "avg_volume_30d"),
                 _value(row, "price_change_pct"),
-                _value(row, "trend_score", _value(row, "interest_score")),
+                _value(row, "social_mentions", _value(row, "trend_score")),
             )
             for row in metrics.itertuples(index=False)
         ]
@@ -159,7 +159,7 @@ class SQLiteStore:
                 """
                 INSERT INTO daily_metrics (
                     ticker, metric_date, close, volume, avg_volume_30d,
-                    price_change_pct, trend_score
+                    price_change_pct, social_mentions
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(ticker, metric_date) DO UPDATE SET
                     close = COALESCE(excluded.close, daily_metrics.close),
@@ -170,7 +170,9 @@ class SQLiteStore:
                     price_change_pct = COALESCE(
                         excluded.price_change_pct, daily_metrics.price_change_pct
                     ),
-                    trend_score = COALESCE(excluded.trend_score, daily_metrics.trend_score)
+                    social_mentions = COALESCE(
+                        excluded.social_mentions, daily_metrics.social_mentions
+                    )
                 """,
                 rows,
             )
@@ -191,10 +193,10 @@ class SQLiteStore:
                 str(row.ticker).upper(),
                 calculation_date,
                 float(row.attention_score),
-                _value(row, "trends_growth_pct"),
+                _value(row, "social_growth_pct"),
                 _value(row, "volume_growth_pct"),
                 _value(row, "price_growth_pct"),
-                _value(row, "google_trends_points"),
+                _value(row, "social_points"),
                 _value(row, "volume_points"),
                 _value(row, "price_points"),
             )
@@ -205,15 +207,15 @@ class SQLiteStore:
                 """
                 INSERT INTO attention_scores (
                     ticker, calculation_date, attention_score,
-                    trends_growth_pct, volume_growth_pct, price_growth_pct,
-                    trends_points, volume_points, price_points
+                    social_growth_pct, volume_growth_pct, price_growth_pct,
+                    social_points, volume_points, price_points
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(ticker, calculation_date) DO UPDATE SET
                     attention_score = excluded.attention_score,
-                    trends_growth_pct = excluded.trends_growth_pct,
+                    social_growth_pct = excluded.social_growth_pct,
                     volume_growth_pct = excluded.volume_growth_pct,
                     price_growth_pct = excluded.price_growth_pct,
-                    trends_points = excluded.trends_points,
+                    social_points = excluded.social_points,
                     volume_points = excluded.volume_points,
                     price_points = excluded.price_points
                 """,
@@ -254,16 +256,16 @@ class SQLiteStore:
             params.append(end_date)
         return self._query(
             f"SELECT metric_date AS date, ticker, close, volume, avg_volume_30d, "
-            f"price_change_pct, trend_score FROM daily_metrics "
+            f"price_change_pct, social_mentions FROM daily_metrics "
             f"WHERE {' AND '.join(clauses)} ORDER BY metric_date",
             tuple(params),
         )
 
     def get_all_daily_metrics(self) -> pd.DataFrame:
-        """Return all historical daily market and trend metrics."""
+        """Return all historical daily market and social-mention metrics."""
         return self._query(
             "SELECT metric_date AS date, ticker, close, volume, avg_volume_30d, "
-            "price_change_pct, trend_score FROM daily_metrics ORDER BY metric_date"
+            "price_change_pct, social_mentions FROM daily_metrics ORDER BY metric_date"
         )
 
     def get_rankings(self) -> pd.DataFrame:
@@ -283,8 +285,8 @@ class SQLiteStore:
             )
             SELECT a.ticker, c.company_name, c.sector, e.earnings_date,
                    e.estimated_eps, e.estimated_revenue,
-                   a.attention_score, a.trends_growth_pct, a.volume_growth_pct,
-                   a.price_growth_pct, a.trends_points, a.volume_points,
+                   a.attention_score, a.social_growth_pct, a.volume_growth_pct,
+                   a.price_growth_pct, a.social_points, a.volume_points,
                    a.price_points, a.calculation_date
             FROM latest_scores l
             JOIN attention_scores a ON a.ticker = l.ticker
@@ -298,20 +300,50 @@ class SQLiteStore:
         )
 
     def _migrate_legacy_schema(self, conn: sqlite3.Connection) -> None:
-        """Drop the pre-reconciliation attention_scores table if it is present.
+        """Migrate older schema versions in place, preserving collected history.
 
-        Version 1 stored a 60/40 ``composite_score``. The reconciled schema
-        stores the canonical 0–100 ``attention_score``. The table is safe to
-        rebuild because scores are always recomputed from ``daily_metrics``.
+        The attention signal has changed sources twice: Google Trends
+        (``trend_score`` / ``trends_growth_pct`` / ``trends_points``), then
+        briefly Reddit (``reddit_mentions`` / ``reddit_growth_pct`` /
+        ``reddit_points``), and now StockTwits, stored generically as
+        ``social_mentions`` / ``social_growth_pct`` / ``social_points`` so a
+        future source change never requires another schema migration. An
+        even older version stored a 60/40 ``composite_score``.
+
+        ``attention_scores`` is always safe to rebuild from scratch (it is
+        fully recomputed from ``daily_metrics`` on every refresh).
+        ``daily_metrics`` is migrated with an in-place column rename so that
+        previously collected price/volume history is not lost.
         """
         exists = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='attention_scores'"
         ).fetchone()
-        if not exists:
-            return
-        columns = {row[1] for row in conn.execute("PRAGMA table_info(attention_scores)")}
-        if "composite_score" in columns:
-            conn.execute("DROP TABLE attention_scores")
+        if exists:
+            columns = {
+                row[1] for row in conn.execute("PRAGMA table_info(attention_scores)")
+            }
+            legacy_growth_columns = {"trends_growth_pct", "reddit_growth_pct"}
+            if "composite_score" in columns or (
+                columns & legacy_growth_columns and "social_growth_pct" not in columns
+            ):
+                conn.execute("DROP TABLE attention_scores")
+
+        exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='daily_metrics'"
+        ).fetchone()
+        if exists:
+            columns = {
+                row[1] for row in conn.execute("PRAGMA table_info(daily_metrics)")
+            }
+            if "social_mentions" not in columns:
+                if "trend_score" in columns:
+                    conn.execute(
+                        "ALTER TABLE daily_metrics RENAME COLUMN trend_score TO social_mentions"
+                    )
+                elif "reddit_mentions" in columns:
+                    conn.execute(
+                        "ALTER TABLE daily_metrics RENAME COLUMN reddit_mentions TO social_mentions"
+                    )
 
     def _ensure_companies(self, tickers: Iterable[object]) -> None:
         """Create minimal company records needed before inserting child rows."""

@@ -4,7 +4,7 @@ The daily pipeline performs this sequence:
 
 1. Updates the upcoming earnings calendar
 2. Downloads daily stock-price and volume data
-3. Fetches Google Trends scores
+3. Counts StockTwits mentions per ticker (free, public API — no signup needed)
 4. Stores collected history in `data/earnings_intelligence.db`
 5. Calculates attention metrics and rankings
 6. Makes the refreshed SQLite data available to the Streamlit dashboard

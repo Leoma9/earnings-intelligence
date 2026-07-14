@@ -16,7 +16,7 @@ class AnalyticsTests(unittest.TestCase):
             {
                 "date": pd.date_range("2026-01-01", periods=31, freq="D").tolist() * 2,
                 "ticker": ["AAPL"] * 31 + ["MSFT"] * 31,
-                "trend_score": list(range(10, 41)) + list(range(40, 9, -1)),
+                "social_mentions": list(range(10, 41)) + list(range(40, 9, -1)),
                 "volume": [100] * 30 + [200] + [100] * 31,
                 "close": [100] * 30 + [110] + [100] * 31,
                 "avg_volume_30d": [100] * 62,
@@ -27,7 +27,7 @@ class AnalyticsTests(unittest.TestCase):
         growth = calculate_growth_metrics(self.metrics)
         apple = growth[growth["ticker"] == "AAPL"].iloc[0]
 
-        self.assertEqual(apple["google_trends_30d_growth_pct"], 300.0)
+        self.assertEqual(apple["social_30d_growth_pct"], 300.0)
         self.assertEqual(apple["volume_1d_growth_pct"], 100.0)
         self.assertEqual(apple["price_1d_growth_pct"], 10.0)
 

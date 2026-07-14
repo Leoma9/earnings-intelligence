@@ -1,5 +1,6 @@
 """Integration tests for SQLite persistence using a temporary database."""
 
+import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -40,7 +41,7 @@ class SQLiteStoreTests(unittest.TestCase):
         self.assertEqual(result.loc[0, "company_name"], "Apple Inc.")
         self.assertEqual(result.loc[0, "estimated_eps"], 2.5)
 
-    def test_daily_metric_upserts_merge_market_and_trend_values(self) -> None:
+    def test_daily_metric_upserts_merge_market_and_social_values(self) -> None:
         market = pd.DataFrame(
             {
                 "ticker": ["AAPL"],
@@ -51,21 +52,21 @@ class SQLiteStoreTests(unittest.TestCase):
                 "price_change_pct": [1.0],
             }
         )
-        trends = pd.DataFrame(
+        mentions = pd.DataFrame(
             {
                 "ticker": ["AAPL"],
                 "date": ["2026-01-02"],
-                "trend_score": [55],
+                "social_mentions": [55],
             }
         )
 
         self.store.upsert_daily_metrics(market)
-        self.store.upsert_daily_metrics(trends)
+        self.store.upsert_daily_metrics(mentions)
         result = self.store.get_daily_metrics("aapl")
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result.loc[0, "close"], 100.0)
-        self.assertEqual(result.loc[0, "trend_score"], 55)
+        self.assertEqual(result.loc[0, "social_mentions"], 55)
 
     def test_attention_scores_return_ranked_company_data(self) -> None:
         earnings = pd.DataFrame(
@@ -84,10 +85,10 @@ class SQLiteStoreTests(unittest.TestCase):
             {
                 "ticker": ["AAPL", "MSFT"],
                 "attention_score": [68.0, 5.0],
-                "trends_growth_pct": [100.0, 0.0],
+                "social_growth_pct": [100.0, 0.0],
                 "volume_growth_pct": [20.0, 10.0],
                 "price_growth_pct": [5.0, 1.0],
-                "google_trends_points": [100.0, 0.0],
+                "social_points": [100.0, 0.0],
                 "volume_points": [20.0, 10.0],
                 "price_points": [16.7, 3.3],
             }
@@ -99,7 +100,7 @@ class SQLiteStoreTests(unittest.TestCase):
 
         self.assertEqual(result["ticker"].tolist(), ["AAPL", "MSFT"])
         self.assertEqual(result.iloc[0]["attention_score"], 68.0)
-        self.assertEqual(result.iloc[0]["trends_growth_pct"], 100.0)
+        self.assertEqual(result.iloc[0]["social_growth_pct"], 100.0)
 
     def test_stored_scores_match_scoring_module_output(self) -> None:
         """Guard against the pipeline/dashboard scoring split regressing."""
@@ -108,7 +109,7 @@ class SQLiteStoreTests(unittest.TestCase):
         growth = pd.DataFrame(
             {
                 "ticker": ["AAPL", "MSFT"],
-                "google_trends_7d_growth_pct": [100.0, 20.0],
+                "social_7d_growth_pct": [100.0, 20.0],
                 "volume_7d_growth_pct": [50.0, 80.0],
                 "price_7d_growth_pct": [30.0, 5.0],
             }
@@ -123,6 +124,125 @@ class SQLiteStoreTests(unittest.TestCase):
 
         for ticker in expected.index:
             self.assertAlmostEqual(stored[ticker], expected[ticker], places=2)
+
+    def test_legacy_trend_score_column_is_migrated_without_data_loss(self) -> None:
+        """A database created before the social-signal renames should upgrade in place."""
+        self.temp_directory.cleanup()
+        self.temp_directory = TemporaryDirectory()
+        db_path = Path(self.temp_directory.name) / "legacy.db"
+
+        with sqlite3.connect(db_path) as conn:
+            conn.executescript(
+                """
+                CREATE TABLE companies (
+                    ticker TEXT PRIMARY KEY,
+                    company_name TEXT NOT NULL,
+                    sector TEXT,
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE TABLE daily_metrics (
+                    ticker TEXT NOT NULL REFERENCES companies(ticker),
+                    metric_date TEXT NOT NULL,
+                    close REAL,
+                    volume INTEGER,
+                    avg_volume_30d REAL,
+                    price_change_pct REAL,
+                    trend_score INTEGER,
+                    PRIMARY KEY (ticker, metric_date)
+                );
+                CREATE TABLE attention_scores (
+                    ticker TEXT NOT NULL REFERENCES companies(ticker),
+                    calculation_date TEXT NOT NULL,
+                    attention_score REAL NOT NULL,
+                    trends_growth_pct REAL,
+                    volume_growth_pct REAL,
+                    price_growth_pct REAL,
+                    trends_points REAL,
+                    volume_points REAL,
+                    price_points REAL,
+                    PRIMARY KEY (ticker, calculation_date)
+                );
+                """
+            )
+            conn.execute(
+                "INSERT INTO companies (ticker, company_name) VALUES ('AAPL', 'Apple Inc.')"
+            )
+            conn.execute(
+                "INSERT INTO daily_metrics "
+                "(ticker, metric_date, close, volume, avg_volume_30d, price_change_pct, trend_score) "
+                "VALUES ('AAPL', '2026-01-02', 100.0, 1000, 900, 1.0, 42)"
+            )
+
+        migrated_store = SQLiteStore(db_path)
+        metrics = migrated_store.get_daily_metrics("AAPL")
+
+        self.assertEqual(len(metrics), 1)
+        self.assertEqual(metrics.loc[0, "close"], 100.0)
+        self.assertEqual(metrics.loc[0, "social_mentions"], 42)
+
+        with sqlite3.connect(db_path) as conn:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(attention_scores)")}
+        self.assertIn("social_growth_pct", columns)
+        self.assertNotIn("trends_growth_pct", columns)
+
+    def test_legacy_reddit_mentions_column_is_migrated_without_data_loss(self) -> None:
+        """A database created during the brief Reddit phase should also upgrade in place."""
+        self.temp_directory.cleanup()
+        self.temp_directory = TemporaryDirectory()
+        db_path = Path(self.temp_directory.name) / "legacy_reddit.db"
+
+        with sqlite3.connect(db_path) as conn:
+            conn.executescript(
+                """
+                CREATE TABLE companies (
+                    ticker TEXT PRIMARY KEY,
+                    company_name TEXT NOT NULL,
+                    sector TEXT,
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE TABLE daily_metrics (
+                    ticker TEXT NOT NULL REFERENCES companies(ticker),
+                    metric_date TEXT NOT NULL,
+                    close REAL,
+                    volume INTEGER,
+                    avg_volume_30d REAL,
+                    price_change_pct REAL,
+                    reddit_mentions INTEGER,
+                    PRIMARY KEY (ticker, metric_date)
+                );
+                CREATE TABLE attention_scores (
+                    ticker TEXT NOT NULL REFERENCES companies(ticker),
+                    calculation_date TEXT NOT NULL,
+                    attention_score REAL NOT NULL,
+                    reddit_growth_pct REAL,
+                    volume_growth_pct REAL,
+                    price_growth_pct REAL,
+                    reddit_points REAL,
+                    volume_points REAL,
+                    price_points REAL,
+                    PRIMARY KEY (ticker, calculation_date)
+                );
+                """
+            )
+            conn.execute(
+                "INSERT INTO companies (ticker, company_name) VALUES ('AAPL', 'Apple Inc.')"
+            )
+            conn.execute(
+                "INSERT INTO daily_metrics "
+                "(ticker, metric_date, close, volume, avg_volume_30d, price_change_pct, reddit_mentions) "
+                "VALUES ('AAPL', '2026-01-02', 100.0, 1000, 900, 1.0, 7)"
+            )
+
+        migrated_store = SQLiteStore(db_path)
+        metrics = migrated_store.get_daily_metrics("AAPL")
+
+        self.assertEqual(len(metrics), 1)
+        self.assertEqual(metrics.loc[0, "social_mentions"], 7)
+
+        with sqlite3.connect(db_path) as conn:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(attention_scores)")}
+        self.assertIn("social_growth_pct", columns)
+        self.assertNotIn("reddit_growth_pct", columns)
 
 
 if __name__ == "__main__":

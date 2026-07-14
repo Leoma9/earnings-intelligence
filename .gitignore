@@ -43,9 +43,13 @@ Thumbs.db
 # Data (keep structure, ignore generated CSVs)
 data/raw/*.csv
 data/processed/*.csv
-data/*.db
 !data/raw/.gitkeep
 !data/processed/.gitkeep
+
+# The SQLite database IS committed on purpose: Streamlit Community Cloud's
+# free tier has no persistent disk, so the live site reads whatever data was
+# last committed here. Run `python scripts/refresh_data.py` locally, then
+# commit + push data/earnings_intelligence.db to publish fresh data.
 
 # Logs
 *.log

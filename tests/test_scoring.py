@@ -12,7 +12,7 @@ class AttentionScoringTests(unittest.TestCase):
         self.sample_growth = pd.DataFrame(
             {
                 "ticker": ["FULL", "MIXED", "NEGATIVE", "MISSING"],
-                "google_trends_7d_growth_pct": [100, 50, -10, None],
+                "social_7d_growth_pct": [100, 50, -10, None],
                 "volume_7d_growth_pct": [100, 100, -20, 100],
                 "price_7d_growth_pct": [30, 0, -5, 30],
             }
@@ -35,7 +35,7 @@ class AttentionScoringTests(unittest.TestCase):
     def test_missing_signal_receives_zero_points(self) -> None:
         scored = calculate_attention_scores(self.sample_growth)
 
-        # MISSING: no Trends points + 100 × 30% + 100 × 20% = 50.
+        # MISSING: no social points + 100 × 30% + 100 × 20% = 50.
         self.assertEqual(
             scored.loc[scored["ticker"] == "MISSING", "attention_score"].iloc[0], 50
         )
@@ -49,7 +49,7 @@ class AttentionScoringTests(unittest.TestCase):
 
     def test_weights_are_adjustable(self) -> None:
         config = AttentionScoreConfig(
-            google_trends_weight=0.0,
+            social_weight=0.0,
             volume_weight=1.0,
             price_weight=0.0,
         )
@@ -62,7 +62,7 @@ class AttentionScoringTests(unittest.TestCase):
     def test_invalid_weights_are_rejected(self) -> None:
         with self.assertRaises(ValueError):
             AttentionScoreConfig(
-                google_trends_weight=0.5,
+                social_weight=0.5,
                 volume_weight=0.3,
                 price_weight=0.3,
             )

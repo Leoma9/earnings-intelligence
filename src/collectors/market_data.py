@@ -5,12 +5,12 @@ from datetime import date, timedelta
 import pandas as pd
 import yfinance as yf
 
-from config.settings import TRENDS_LOOKBACK_DAYS
+from config.settings import SOCIAL_LOOKBACK_DAYS
 
 
 def fetch_market_data(
     tickers: list[str],
-    lookback_days: int = TRENDS_LOOKBACK_DAYS,
+    lookback_days: int = SOCIAL_LOOKBACK_DAYS,
 ) -> pd.DataFrame:
     """
     Return daily market metrics for each ticker.

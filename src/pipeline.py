@@ -17,8 +17,8 @@ from config.settings import DATABASE_FILE
 from src.analytics.growth_ranking import calculate_growth_metrics
 from src.analytics.scoring import calculate_attention_scores
 from src.collectors.earnings_calendar import fetch_upcoming_earnings
-from src.collectors.google_trends import fetch_trends_interest
 from src.collectors.market_data import fetch_market_data
+from src.collectors.social_mentions import fetch_social_mentions
 from src.storage.sqlite_store import SQLiteStore
 
 
@@ -27,7 +27,7 @@ class PipelineResult:
     """Outcome of one refresh run, used for CLI printing and UI feedback."""
 
     tickers_found: int = 0
-    trends_collected: bool = False
+    social_mentions_collected: bool = False
     rankings: pd.DataFrame = field(default_factory=pd.DataFrame)
     messages: list[str] = field(default_factory=list)
 
@@ -56,13 +56,13 @@ def run_refresh_pipeline(database_path=DATABASE_FILE) -> PipelineResult:
         market = fetch_market_data(tickers)
         store.upsert_daily_metrics(market)
 
-        result.log("Fetching Google Trends interest...")
-        trends = fetch_trends_interest(tickers)
-        if trends.empty:
-            result.log("Google Trends returned no data (rate limit or network issue).")
+        result.log("Fetching StockTwits mention counts...")
+        mentions = fetch_social_mentions(tickers)
+        if mentions.empty:
+            result.log("StockTwits returned no mention data (network or API issue).")
         else:
-            store.upsert_daily_metrics(trends)
-            result.trends_collected = True
+            store.upsert_daily_metrics(mentions)
+            result.social_mentions_collected = True
     else:
         result.log("No upcoming earnings found in this refresh; rescoring existing history.")
 

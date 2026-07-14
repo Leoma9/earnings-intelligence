@@ -107,7 +107,7 @@ pip install -r requirements.txt
 | streamlit | Powers the web dashboard you see in your browser  |
 | pandas    | Handles data tables and calculations              |
 | yfinance  | Fetches stock market data from Yahoo Finance      |
-| pytrends  | Fetches Google Trends search interest data        |
+| requests  | Fetches StockTwits mention counts (no API key needed) |
 | numpy     | Supports numerical calculations                   |
 
 This may take 1–2 minutes. You only need to run it **once** (or again if packages are updated).
@@ -116,7 +116,7 @@ This may take 1–2 minutes. You only need to run it **once** (or again if packa
 
 ## Step 5: Download Data
 
-Before the dashboard can show anything, you need to fetch stock and trends data:
+Before the dashboard can show anything, you need to fetch stock, earnings, and StockTwits mention data:
 
 ```bash
 python scripts/refresh_data.py
@@ -125,9 +125,9 @@ python scripts/refresh_data.py
 **What this does:**
 1. Finds companies with earnings in the next 30 days
 2. Downloads stock prices and trading volume
-3. Fetches Google Trends interest scores
+3. Counts StockTwits mentions per ticker (free, public API — no signup needed)
 4. Calculates attention growth and rankings
-5. Saves everything to CSV files in the `data/` folder
+5. Saves everything to the local SQLite database in the `data/` folder
 
 This takes 2–5 minutes depending on your internet speed. Re-run this whenever you want fresh data.
 
@@ -192,11 +192,12 @@ A previous session is still running. Either close that Terminal window, or stop 
 ## What's in requirements.txt?
 
 ```
-streamlit>=1.32.0
-pandas>=2.2.0
-yfinance>=0.2.36
-pytrends>=4.9.2
-numpy>=1.26.0
+streamlit==1.59.2
+pandas==3.0.3
+yfinance==1.5.1
+requests==2.34.2
+numpy==2.5.1
+plotly==6.9.0
 ```
 
 Each line is one package. The version number (e.g. `>=1.32.0`) means "this version or newer." You don't need to edit this file — `pip install -r requirements.txt` handles everything.

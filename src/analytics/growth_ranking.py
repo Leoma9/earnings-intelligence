@@ -17,7 +17,7 @@ import pandas as pd
 
 GROWTH_PERIODS = (1, 3, 7, 30)
 SIGNALS = {
-    "trend_score": "google_trends",
+    "social_mentions": "social",
     "volume": "volume",
     "close": "price",
 }
@@ -28,8 +28,8 @@ def calculate_growth_metrics(daily_metrics: pd.DataFrame) -> pd.DataFrame:
 
     Args:
         daily_metrics: A DataFrame containing ``date``, ``ticker``,
-            ``trend_score``, ``volume``, and ``close``. Fields can be null
-            when a source did not return data.
+            ``social_mentions``, ``volume``, and ``close``. Fields can be
+            null when a source did not return data.
 
     Returns:
         One row per ticker. Growth is calculated as
@@ -65,7 +65,7 @@ def rank_companies_by_growth(daily_metrics: pd.DataFrame) -> pd.DataFrame:
     """Return companies ranked by equally weighted available growth signals.
 
     The ``growth_score`` is the arithmetic mean of all available 1-, 3-, 7-,
-    and 30-day growth percentages across Google Trends, volume, and price.
+    and 30-day growth percentages across social mentions, volume, and price.
     It is a simple V1 momentum ranking, not investment advice.
     """
     growth = calculate_growth_metrics(daily_metrics)
@@ -118,9 +118,16 @@ def _validate_metrics(daily_metrics: pd.DataFrame) -> None:
             "daily_metrics is missing required column(s): " + ", ".join(sorted(missing))
         )
 
-    # ``interest_score`` was the old collector name; support it transparently.
-    if "trend_score" not in daily_metrics.columns and "interest_score" in daily_metrics.columns:
-        daily_metrics.rename(columns={"interest_score": "trend_score"}, inplace=True)
+    # ``trend_score`` (Google Trends) and ``reddit_mentions`` (Reddit) were
+    # earlier column names for this signal; support them transparently for
+    # any caller not yet migrated to the generic ``social_mentions`` name.
+    if "social_mentions" not in daily_metrics.columns:
+        for legacy_column in ("trend_score", "reddit_mentions"):
+            if legacy_column in daily_metrics.columns:
+                daily_metrics.rename(
+                    columns={legacy_column: "social_mentions"}, inplace=True
+                )
+                break
 
     for column in SIGNALS:
         if column not in daily_metrics.columns:
