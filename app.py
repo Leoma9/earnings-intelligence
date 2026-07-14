@@ -191,23 +191,12 @@ metric_columns[1].metric(
     "Top Yahoo trend",
     f"#{int(top_yahoo['current_yahoo_rank'])}" if top_yahoo is not None else "—",
 )
-metric_columns[1].caption(
-    str(top_yahoo["ticker"]) if top_yahoo is not None else "Run a refresh to collect"
-)
 metric_columns[2].metric(
     "Top StockTwits searches",
     f"{top_mentions_value:,.0f}" if top_mentions_value is not None else "—",
 )
-metric_columns[2].caption(
-    str(most_mentioned.iloc[0]["ticker"])
-    if not most_mentioned.empty
-    else "Run a refresh to collect"
-)
 metric_columns[3].metric(
     "Average attention score", f"{attention['attention_score'].mean():.1f}/100"
-)
-metric_columns[3].caption(
-    "Composite 0–100 score blending 7-day search gains, volume gains, and price momentum."
 )
 metric_columns[4].metric("Next earnings", next_earnings)
 
@@ -218,10 +207,6 @@ yahoo_col, stocktwits_col = st.columns(2)
 
 with yahoo_col:
     st.markdown("**Yahoo Finance**")
-    st.caption(
-        "Ranked by Yahoo Finance trending position (#1 = most searched on Yahoo). "
-        "Yahoo does not publish raw search counts; this is their official trending list."
-    )
     if most_trending_yahoo.empty:
         st.info("Yahoo trending data is unavailable. Run a refresh later.")
     else:
