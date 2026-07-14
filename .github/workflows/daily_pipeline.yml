@@ -1,0 +1,37 @@
+name: Daily Earnings Data Refresh
+
+on:
+  schedule:
+    # 13:00 UTC; adjust this to the time you want the job to run.
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out project
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Refresh earnings data
+        run: python scripts/scheduler.py --once
+
+      # This makes the generated SQLite file available to download from the
+      # workflow run. It does not automatically update a hosted dashboard.
+      - name: Upload refreshed database
+        uses: actions/upload-artifact@v4
+        with:
+          name: earnings-intelligence-database
+          path: data/earnings_intelligence.db
+          if-no-files-found: error
