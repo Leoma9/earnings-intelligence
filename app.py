@@ -7,7 +7,7 @@ import plotly.express as px
 import streamlit as st
 
 from config.secrets import get_setting
-from src.dashboard.data import load_dashboard_data
+from src.dashboard.data import format_market_cap, load_dashboard_data
 from src.pipeline import run_refresh_pipeline
 
 
@@ -73,7 +73,7 @@ with st.sidebar:
                 if entered_token and hmac.compare_digest(
                     str(entered_token), str(configured_token)
                 ):
-                    with st.spinner("Collecting earnings, prices, and trends..."):
+                    with st.spinner("Collecting earnings, prices, and StockTwits mentions..."):
                         result = run_refresh_pipeline()
                     for message in result.messages:
                         st.write(f"- {message}")
@@ -174,15 +174,17 @@ with upcoming_col:
     if earnings.empty:
         st.info("No earnings events are available in the next 30 days.")
     else:
+        display_earnings = earnings.head(10).copy()
+        display_earnings["estimated_revenue"] = display_earnings[
+            "estimated_revenue"
+        ].apply(format_market_cap)
         st.dataframe(
-            earnings.head(10),
+            display_earnings,
             use_container_width=True,
             hide_index=True,
             column_config={
                 "estimated_eps": st.column_config.NumberColumn("Est. EPS", format="%.2f"),
-                "estimated_revenue": st.column_config.NumberColumn(
-                    "Est. Revenue", format="$%.2f"
-                ),
+                "estimated_revenue": st.column_config.TextColumn("Est. Revenue"),
             },
         )
 

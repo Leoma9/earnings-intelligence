@@ -20,6 +20,7 @@ class StubEarningsProvider:
                 "earnings_date": date.today() + timedelta(days=7),
                 "estimated_eps": 2.0,
                 "estimated_revenue": 100.0,
+                "sector": "Technology",
             },
             "LATE": {
                 "ticker": ticker,
@@ -58,6 +59,7 @@ class CollectorTests(unittest.TestCase):
 
         self.assertEqual(result["ticker"].tolist(), ["AAPL"])
         self.assertEqual(result.loc[0, "company_name"], "Apple Inc.")
+        self.assertEqual(result.loc[0, "sector"], "Technology")
         self.assertEqual(
             list(result.columns), earnings_calendar.CALENDAR_COLUMNS
         )

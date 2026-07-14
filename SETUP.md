@@ -200,4 +200,4 @@ numpy==2.5.1
 plotly==6.9.0
 ```
 
-Each line is one package. The version number (e.g. `>=1.32.0`) means "this version or newer." You don't need to edit this file — `pip install -r requirements.txt` handles everything.
+Each line is one package pinned to an exact version (e.g. `==1.59.2`), so everyone who sets up this project installs the same tested versions instead of whatever is newest that day. You don't need to edit this file — `pip install -r requirements.txt` handles everything.

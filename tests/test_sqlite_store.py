@@ -106,6 +106,18 @@ class SQLiteStoreTests(unittest.TestCase):
         """Guard against the pipeline/dashboard scoring split regressing."""
         from src.analytics.scoring import calculate_attention_scores
 
+        earnings = pd.DataFrame(
+            {
+                "ticker": ["AAPL", "MSFT"],
+                "company_name": ["Apple", "Microsoft"],
+                "earnings_date": [
+                    (date.today() + timedelta(days=5)).isoformat(),
+                    (date.today() + timedelta(days=8)).isoformat(),
+                ],
+                "estimated_eps": [2.0, 3.0],
+                "estimated_revenue": [100.0, 200.0],
+            }
+        )
         growth = pd.DataFrame(
             {
                 "ticker": ["AAPL", "MSFT"],
@@ -116,6 +128,7 @@ class SQLiteStoreTests(unittest.TestCase):
         )
         scored = calculate_attention_scores(growth)
 
+        self.store.upsert_earnings(earnings)
         self.store.upsert_attention_scores(
             scored, calculation_date=date.today().isoformat()
         )
@@ -124,6 +137,39 @@ class SQLiteStoreTests(unittest.TestCase):
 
         for ticker in expected.index:
             self.assertAlmostEqual(stored[ticker], expected[ticker], places=2)
+
+    def test_rankings_exclude_companies_without_upcoming_earnings(self) -> None:
+        """A ticker whose earnings date has passed should drop out of rankings."""
+        earnings = pd.DataFrame(
+            {
+                "ticker": ["AAPL", "STALE"],
+                "company_name": ["Apple", "Stale Corp"],
+                "earnings_date": [
+                    (date.today() + timedelta(days=5)).isoformat(),
+                    (date.today() - timedelta(days=10)).isoformat(),
+                ],
+                "estimated_eps": [2.0, 1.0],
+                "estimated_revenue": [100.0, 50.0],
+            }
+        )
+        scores = pd.DataFrame(
+            {
+                "ticker": ["AAPL", "STALE"],
+                "attention_score": [50.0, 90.0],
+                "social_growth_pct": [50.0, 90.0],
+                "volume_growth_pct": [50.0, 90.0],
+                "price_growth_pct": [50.0, 90.0],
+                "social_points": [50.0, 90.0],
+                "volume_points": [50.0, 90.0],
+                "price_points": [50.0, 90.0],
+            }
+        )
+
+        self.store.upsert_earnings(earnings)
+        self.store.upsert_attention_scores(scores, calculation_date=date.today().isoformat())
+        result = self.store.get_rankings()
+
+        self.assertEqual(result["ticker"].tolist(), ["AAPL"])
 
     def test_legacy_trend_score_column_is_migrated_without_data_loss(self) -> None:
         """A database created before the social-signal renames should upgrade in place."""

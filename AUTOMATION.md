@@ -87,7 +87,7 @@ launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.earningsintelligence.d
 **Limitation:** the computer must be powered on and logged in when the schedule
 is due. It is suitable for personal use, not guaranteed production automation.
 
-## Option 2: GitHub Actions
+## Option 2: GitHub Actions (recommended if deployed to Streamlit Cloud)
 
 The repository includes `.github/workflows/daily_pipeline.yml`.
 
@@ -95,14 +95,21 @@ After the project is pushed to GitHub, GitHub runs it daily at 13:00 UTC and
 also provides a **Run workflow** button for manual runs. Change the cron line
 to change its schedule.
 
-The workflow saves the resulting SQLite file as a downloadable workflow
-artifact. GitHub Actions runners are temporary, so an artifact **does not
-automatically update a deployed dashboard**.
+The workflow runs the pipeline, then **commits the refreshed
+`data/earnings_intelligence.db` back to the `main` branch** (only if it
+actually changed) and pushes. This is a deliberate choice for this project:
+Streamlit Community Cloud has no persistent disk of its own (see
+`DEPLOYMENT.md`), so committing the database is what makes the *deployed*
+dashboard show fresh data automatically — each automated commit triggers a
+Streamlit Cloud redeploy that picks up the new snapshot. No manual refresh
+step is needed once this workflow is enabled.
 
-For a deployed dashboard, add a final upload step to copy the database to a
-persistent provider (object storage, a server volume, or a managed database).
-Do not commit the SQLite database to Git on every run: it creates avoidable
-binary-file conflicts and exposes operational data in repository history.
+This trades away clean diff history for the database file (every run adds a
+binary-file commit) in exchange for a fully hands-off pipeline. For a project
+with heavier write volume or multiple contributors, swap this for uploading
+to persistent object storage or a hosted database instead — but for a
+single-writer personal project refreshing once a day, a growing SQLite file
+in Git history is a reasonable, simple trade-off.
 
 ## Option 3: Cloud Hosting
 

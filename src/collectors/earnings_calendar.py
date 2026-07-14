@@ -16,6 +16,7 @@ CALENDAR_COLUMNS = [
     "earnings_date",
     "estimated_eps",
     "estimated_revenue",
+    "sector",
 ]
 
 
@@ -58,6 +59,7 @@ class YahooFinanceEarningsProvider:
             "estimated_revenue": _number_or_none(
                 calendar_data.get("Revenue Average")
             ),
+            "sector": info.get("sector"),
         }
 
 

@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from src.dashboard.data import get_company_data, load_dashboard_data
+from src.dashboard.data import format_market_cap, get_company_data, load_dashboard_data
 
 
 def _chart_layout(y_title: str) -> dict:
@@ -15,7 +15,10 @@ def _chart_layout(y_title: str) -> dict:
         "paper_bgcolor": "#121c31",
         "plot_bgcolor": "#121c31",
         "font": {"color": "#dbeafe"},
-        "xaxis": {"showgrid": False, "title": ""},
+        # A fixed date tickformat (rather than Plotly's auto-detected format)
+        # avoids nonsensical sub-second tick labels when a ticker only has a
+        # single day of history so far (e.g. right after adding a new signal).
+        "xaxis": {"showgrid": False, "title": "", "type": "date", "tickformat": "%b %d"},
         "yaxis": {"gridcolor": "#23304d", "title": y_title},
         "showlegend": False,
     }
@@ -147,7 +150,7 @@ with gauge_col:
 
     st.caption("50% StockTwits mention growth · 30% volume growth · 20% price momentum")
     st.metric("Est. EPS", _format_value(earnings.get("estimated_eps"), "$%.2f"))
-    st.metric("Est. revenue", _format_value(earnings.get("estimated_revenue"), "$%.2f"))
+    st.metric("Est. revenue", format_market_cap(earnings.get("estimated_revenue")))
 
 st.subheader("StockTwits mention history")
 mention_history = metrics.dropna(subset=["social_mentions"])

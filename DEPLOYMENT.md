@@ -13,28 +13,40 @@ visit. Pushing new commits to GitHub automatically redeploys the site.
 
 ---
 
-## Important limitation: storage is not permanent
+## Important limitation: storage is not permanent — but the repo ships with data
 
-Streamlit Community Cloud gives each app a **temporary** disk. The SQLite
-database (`data/earnings_intelligence.db`) persists while the app is running,
-but is **wiped** whenever the app:
+Streamlit Community Cloud gives each app a **temporary** disk. Whatever the
+running app writes to `data/earnings_intelligence.db` is **wiped** whenever
+the app:
 
 - is redeployed (you push a new commit),
 - reboots after a long idle period ("sleeping" on the free tier),
 - or is restarted by Streamlit's infrastructure.
 
-This is fine for a Version 1 demo, but it means the site can show "no data"
-after a reboot until it's refreshed again. Two ways to handle that are built
-in:
+To work around this, `data/earnings_intelligence.db` is **committed to Git on
+purpose** (it is not in `.gitignore`). Every fresh deploy or reboot starts
+from whatever snapshot of the database was last pushed to GitHub — not an
+empty one. Keeping the data fresh is then just a matter of refreshing your
+*local* database and pushing it, in one of two ways:
 
-1. **In-app admin refresh** — an "Admin: refresh data" panel in the sidebar
-   (protected by a secret token) that reruns the full pipeline on demand.
-2. **Your own scheduled refresh** — keep running `scripts/scheduler.py` or the
-   GitHub Actions workflow (see `AUTOMATION.md`) locally or elsewhere, and use
-   the admin panel to repopulate the live site after each cloud reboot.
+1. **Automatically** — the included GitHub Actions workflow
+   (`.github/workflows/daily_pipeline.yml`) runs the pipeline on a daily
+   schedule and commits the refreshed database back to `main` for you. Once
+   this is pushed and enabled, Streamlit Cloud picks up each automated commit
+   and redeploys with fresh data — no manual steps needed. See `AUTOMATION.md`.
+2. **Manually** — run `python scripts/refresh_data.py` locally, then
+   `git add data/earnings_intelligence.db && git commit -m "Refresh data" && git push`.
+
+There's also an **in-app admin refresh** panel (sidebar → "Admin: refresh
+data", protected by a secret token) that reruns the pipeline directly on the
+live site. It's convenient for an instant spot-refresh, but its result lives
+only on that instance's temporary disk — it does **not** get committed to
+Git, so it will be lost on the next redeploy or sleep cycle. For data that
+survives long-term, prefer option 1 or 2 above.
 
 A future upgrade path (not needed for V1) is swapping SQLite for a hosted
-database such as Postgres, which would survive reboots automatically.
+database such as Postgres, which would survive reboots automatically without
+needing to commit a binary file to Git at all.
 
 ---
 
@@ -68,7 +80,8 @@ git status
 **Before committing**, check the `git status` output carefully. You should
 **not** see `.streamlit/secrets.toml` or `.venv/` listed — `.gitignore`
 excludes them. If you do see `.streamlit/secrets.toml`, stop and let me know
-before continuing.
+before continuing. You **should** see `data/earnings_intelligence.db` listed
+— that's expected and intentional (see "Important limitation" above).
 
 Then make the first commit:
 
@@ -194,13 +207,16 @@ placeholder value) is tracked, so collaborators know which keys to set.
 
 1. Once the build finishes, Streamlit shows your public URL
    (`https://your-app-name.streamlit.app`).
-2. Open it. Since the database starts empty on a fresh deploy, you'll see:
-   *"No dashboard data is available yet."*
-3. In the sidebar, open **Admin: refresh data**.
-4. Enter the same token you set in Secrets.
-5. Click **Run full refresh now** and wait (~30–60 seconds — it's fetching
-   live data from Yahoo Finance and StockTwits).
-6. The page reloads with populated rankings.
+2. Open it. Because `data/earnings_intelligence.db` is committed to the repo,
+   you should see it load with whatever rankings were present the last time
+   the database was refreshed and pushed — no manual step needed on a fresh
+   deploy.
+3. If you want fresher numbers right now, open **Admin: refresh data** in the
+   sidebar, enter your token, and click **Run full refresh now** (~30–60
+   seconds — it's fetching live data from Yahoo Finance and StockTwits).
+   Remember this in-app refresh does not persist past the next redeploy or
+   sleep cycle (see "Important limitation" above) — for a lasting update,
+   refresh and push locally, or rely on the daily GitHub Actions workflow.
 
 Visit the **Company** page (sidebar) to confirm ticker charts render too.
 
@@ -237,8 +253,9 @@ tier only provides the `*.streamlit.app` subdomain.
 - **Resources:** Community Cloud apps run with limited CPU/RAM (around 1 GB).
   This project's SQLite + Streamlit setup fits comfortably within that.
 - **Sleep after inactivity:** free apps sleep if unused for a while and wake
-  up (with a short delay) on the next visit. Waking up gives it a fresh,
-  empty disk — use the admin refresh panel to repopulate data.
+  up (with a short delay) on the next visit. Waking up gives it a fresh disk
+  restored from the last Git commit — so it reloads whatever data was last
+  pushed, not an empty database.
 - **Private repositories work fine:** Streamlit Community Cloud can deploy
   from private GitHub repos on the free tier — your source code stays
   private, while the running app itself is still publicly viewable at its URL.
@@ -253,7 +270,7 @@ tier only provides the `*.streamlit.app` subdomain.
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Build fails installing a package | Python version mismatch | Redeploy with a different Python version in Advanced settings (Community Cloud ignores `runtime.txt`) |
-| "No dashboard data is available" after every visit | Disk wiped on reboot | Use the admin refresh panel; consider running it right after each deploy |
+| "No dashboard data is available" on a fresh deploy | `data/earnings_intelligence.db` wasn't committed, or was emptied locally before pushing | Run `python scripts/refresh_data.py` locally, then commit and push the database file |
 | Admin refresh button says "Incorrect admin token" | Secret not saved, or typo | Re-check **Settings → Secrets** on Streamlit Cloud matches what you typed |
 | Push to GitHub asks for a password and rejects it | GitHub no longer accepts account passwords over plain Git | Use a Personal Access Token, or `gh auth login` |
 | App stuck "Oh no, error running app" | Check the **Manage app** logs in the bottom-right of the site for the Python traceback | Fix locally, then `git push` again |

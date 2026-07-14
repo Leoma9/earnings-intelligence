@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   refresh:
@@ -27,8 +27,23 @@ jobs:
       - name: Refresh earnings data
         run: python scripts/scheduler.py --once
 
-      # This makes the generated SQLite file available to download from the
-      # workflow run. It does not automatically update a hosted dashboard.
+      # data/earnings_intelligence.db is intentionally committed to the repo
+      # (see DEPLOYMENT.md): Streamlit Community Cloud has no persistent disk,
+      # so this commit is what makes the deployed dashboard pick up fresh data
+      # automatically. Only commits when the database actually changed.
+      - name: Commit refreshed database
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/earnings_intelligence.db
+          if git diff --staged --quiet; then
+            echo "No data changes to commit."
+          else
+            git commit -m "Automated data refresh $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
+
+      # Also kept as a downloadable artifact for convenience / debugging.
       - name: Upload refreshed database
         uses: actions/upload-artifact@v4
         with:

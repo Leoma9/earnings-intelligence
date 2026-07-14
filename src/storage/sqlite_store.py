@@ -269,7 +269,16 @@ class SQLiteStore:
         )
 
     def get_rankings(self) -> pd.DataFrame:
-        """Return the newest attention score for each company with earnings info."""
+        """Return the newest attention score for each company with a genuinely
+        upcoming earnings date.
+
+        Once a ticker's earnings date passes, the pipeline stops collecting
+        fresh price/volume/mention data for it (see ``src.pipeline``), so an
+        older score would otherwise sit frozen and keep re-appearing in the
+        rankings forever. Requiring a matching upcoming ``earnings`` row (an
+        inner join, not a left join) keeps the dashboard scoped to its stated
+        purpose: companies with upcoming earnings, not stale history.
+        """
         return self._query(
             """
             WITH latest_scores AS (
@@ -292,9 +301,9 @@ class SQLiteStore:
             JOIN attention_scores a ON a.ticker = l.ticker
                                   AND a.calculation_date = l.calculation_date
             JOIN companies c ON c.ticker = a.ticker
-            LEFT JOIN next_earnings n ON n.ticker = a.ticker
-            LEFT JOIN earnings e ON e.ticker = n.ticker
-                                AND e.earnings_date = n.earnings_date
+            JOIN next_earnings n ON n.ticker = a.ticker
+            JOIN earnings e ON e.ticker = n.ticker
+                           AND e.earnings_date = n.earnings_date
             ORDER BY a.attention_score DESC, a.ticker
             """
         )
