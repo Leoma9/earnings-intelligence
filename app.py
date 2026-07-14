@@ -7,7 +7,7 @@ import plotly.express as px
 import streamlit as st
 
 from config.secrets import get_setting
-from src.dashboard.data import format_market_cap, load_dashboard_data
+from src.dashboard.data import load_dashboard_data
 from src.pipeline import run_refresh_pipeline
 
 
@@ -109,10 +109,13 @@ metric_columns[1].metric(
 metric_columns[2].metric(
     "Average attention score", f"{attention['attention_score'].mean():.1f}/100"
 )
+metric_columns[2].caption(
+    "Composite 0–100 score blending 7-day search gains, volume gains, and price momentum."
+)
 metric_columns[3].metric("Next earnings", next_earnings)
 
 st.divider()
-left, right = st.columns([1.35, 1])
+left, right = st.columns(2)
 
 # Category 1: who is being searched/talked about the most *right now*
 # (absolute level). Separate from the growth category below, which tracks
@@ -150,10 +153,15 @@ with left:
 
 with right:
     st.subheader("Search volume leaders")
+    st.caption("Source: StockTwits public mention stream, refreshed daily.")
     if most_mentioned.empty:
         st.info("StockTwits mention data is currently unavailable. Run a refresh later.")
     else:
         chart_data = most_mentioned.head(10).sort_values("current_mentions")
+        max_searches = chart_data["current_mentions"].max()
+        # Keep the x-axis comfortably above the leader so high-volume names
+        # are not clipped; never cap the scale at ~30 when values go higher.
+        x_max = max(max_searches * 1.15, 35)
         figure = px.bar(
             chart_data,
             x="current_mentions",
@@ -163,7 +171,7 @@ with right:
             color_continuous_scale=["#273a66", "#4f8cff", "#6ee7b7"],
         )
         figure.update_layout(
-            height=355,
+            height=420,
             margin=dict(l=0, r=0, t=10, b=0),
             coloraxis_showscale=False,
             paper_bgcolor="#121c31",
@@ -171,50 +179,29 @@ with right:
             font_color="#dbeafe",
             xaxis_title="Searches",
             yaxis_title="",
+            xaxis=dict(range=[0, x_max]),
         )
         st.plotly_chart(figure, use_container_width=True, config={"displayModeBar": False})
 
 st.divider()
-upcoming_col, growth_col = st.columns(2)
-
-with upcoming_col:
-    st.subheader("Upcoming earnings")
-    if earnings.empty:
-        st.info("No earnings events are available in the next 30 days.")
-    else:
-        display_earnings = earnings.head(10).copy()
-        display_earnings["estimated_revenue"] = display_earnings[
-            "estimated_revenue"
-        ].apply(format_market_cap)
-        st.dataframe(
-            display_earnings,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "estimated_eps": st.column_config.NumberColumn("Est. EPS", format="%.2f"),
-                "estimated_revenue": st.column_config.TextColumn("Est. Revenue"),
-            },
-        )
 
 # Category 2: who gained the most searches recently — separate from the
-# absolute-level "most searched" list above. A company can be climbing
-# quickly off a small base without yet cracking the top-search list.
-with growth_col:
-    st.subheader("Highest increase in searches")
-    st.caption("Ranked by StockTwits search growth over the last 7 days.")
-    if social_growth.empty:
-        st.info("StockTwits mention data is currently unavailable. Run a refresh later.")
-    else:
-        display_growth = social_growth[
-            ["ticker", "company_name", "earnings_date", "social_change"]
-        ].head(10)
-        st.dataframe(
-            display_growth,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "social_change": st.column_config.NumberColumn(
-                    "Searches Gained (7D)", format="%+,.0f"
-                )
-            },
-        )
+# absolute-level "most searched" list above.
+st.subheader("Highest increase in searches")
+st.caption("Ranked by StockTwits search growth over the last 7 days.")
+if social_growth.empty:
+    st.info("StockTwits mention data is currently unavailable. Run a refresh later.")
+else:
+    display_growth = social_growth[
+        ["ticker", "company_name", "earnings_date", "social_change"]
+    ].head(10)
+    st.dataframe(
+        display_growth,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "social_change": st.column_config.NumberColumn(
+                "Searches Gained (7D)", format="%+,.0f"
+            )
+        },
+    )
