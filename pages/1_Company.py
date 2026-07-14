@@ -47,7 +47,10 @@ st.markdown(
 def get_company_list() -> list[str]:
     """Return researchable tickers from the current database snapshot."""
     data = load_dashboard_data()
-    return data["attention"]["ticker"].tolist()
+    attention = data["attention"]
+    if attention.empty or "ticker" not in attention.columns:
+        return []
+    return attention["ticker"].tolist()
 
 
 @st.cache_data(ttl=60)
