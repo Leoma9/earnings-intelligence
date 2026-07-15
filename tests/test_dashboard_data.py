@@ -8,6 +8,8 @@ from src.dashboard.data import (
     _latest_current_mentions,
     _latest_yahoo_ranks,
     _yahoo_rank_change,
+    format_last_data_refresh,
+    get_last_data_refresh_at,
     load_dashboard_data,
 )
 
@@ -86,6 +88,30 @@ class DashboardDataTests(unittest.TestCase):
             changes.set_index("ticker")["yahoo_rank_change"].to_dict(),
             {"AAPL": 96, "MSFT": 20},
         )
+
+    def test_last_data_refresh_helpers(self) -> None:
+        from datetime import datetime, timezone
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+
+        self.assertIsNone(get_last_data_refresh_at(Path("/no/such/db.sqlite")))
+        self.assertIsNone(format_last_data_refresh(None))
+
+        with TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "metrics.db"
+            db_path.write_bytes(b"")
+            moment = get_last_data_refresh_at(db_path)
+            self.assertIsNotNone(moment)
+            assert moment is not None
+            self.assertEqual(moment.tzinfo, timezone.utc)
+
+        label = format_last_data_refresh(
+            datetime(2026, 7, 14, 13, 0, tzinfo=timezone.utc)
+        )
+        self.assertIsNotNone(label)
+        assert label is not None
+        self.assertTrue(label.startswith("Data last refreshed"))
+        self.assertIn("2026", label)
 
 
 if __name__ == "__main__":

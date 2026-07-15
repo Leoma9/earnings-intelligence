@@ -7,7 +7,11 @@ import plotly.express as px
 import streamlit as st
 
 from config.secrets import get_setting
-from src.dashboard.data import load_dashboard_data
+from src.dashboard.data import (
+    format_last_data_refresh,
+    get_last_data_refresh_at,
+    load_dashboard_data,
+)
 from src.pipeline import run_refresh_pipeline
 
 
@@ -171,6 +175,9 @@ st.title("Most Watched Upcoming Earnings")
 st.caption(
     "Companies ranked based on investor search activity ahead of earnings reports"
 )
+refresh_label = format_last_data_refresh(get_last_data_refresh_at())
+if refresh_label:
+    st.caption(refresh_label)
 
 if attention.empty:
     st.warning(

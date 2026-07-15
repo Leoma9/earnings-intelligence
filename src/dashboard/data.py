@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+from pathlib import Path
+
 import pandas as pd
 
 from config.settings import DATABASE_FILE
@@ -10,6 +13,41 @@ from src.storage.sqlite_store import SQLiteStore
 # Tickers not on Yahoo's trending list are treated as one slot below the
 # maximum list size when measuring how many ranks they climbed over 7 days.
 _OFF_YAHOO_LIST_RANK = 101
+
+
+def get_last_data_refresh_at(
+    database_path: Path | str = DATABASE_FILE,
+) -> datetime | None:
+    """Return when the SQLite database was last written (UTC).
+
+    The daily GitHub Actions job and in-app/admin refreshes both rewrite
+    ``earnings_intelligence.db``, so the file mtime is a reliable
+    last-refreshed signal for the homepage.
+    """
+    path = Path(database_path)
+    if not path.exists():
+        return None
+    return datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+
+
+def format_last_data_refresh(moment: datetime | None) -> str | None:
+    """Format a refresh timestamp for display on the homepage."""
+    if moment is None:
+        return None
+    # Show Eastern time — the product audience and daily job cadence align
+    # with US market hours better than raw UTC.
+    try:
+        from zoneinfo import ZoneInfo
+
+        local = moment.astimezone(ZoneInfo("America/New_York"))
+        zone_label = local.tzname() or "ET"
+    except Exception:
+        local = moment.astimezone()
+        zone_label = local.tzname() or "local"
+
+    # Avoid platform-specific %-d / %-I flags.
+    stamp = local.strftime("%b %d, %Y at %I:%M %p").replace(" 0", " ")
+    return f"Data last refreshed {stamp} {zone_label}"
 
 
 def load_dashboard_data() -> dict[str, pd.DataFrame]:
