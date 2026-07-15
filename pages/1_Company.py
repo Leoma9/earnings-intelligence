@@ -40,11 +40,6 @@ st.markdown(
             padding: 14px;
         }
         h1, h2, h3 { color: #f3f7ff; }
-        [data-testid="stSidebarFooter"],
-        [data-testid="stDecoration"],
-        a[href*="streamlit.io"] {
-            display: none !important;
-        }
     </style>
     """,
     unsafe_allow_html=True,
