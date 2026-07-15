@@ -214,12 +214,12 @@ metric_columns[3].metric(
 metric_columns[4].metric("Next earnings", next_earnings)
 
 st.divider()
-st.subheader("Most searched companies")
+st.subheader("Trending ahead of earnings")
 
 yahoo_col, stocktwits_col = st.columns(2)
 
 with yahoo_col:
-    st.markdown("**Yahoo Finance**")
+    st.markdown("**Most trending**")
     if most_trending_yahoo.empty:
         st.info("Yahoo trending data is unavailable. Run a refresh later.")
     else:
@@ -231,14 +231,14 @@ with yahoo_col:
         )
 
 with stocktwits_col:
-    st.markdown("**StockTwits**")
+    st.markdown("**Most mentioned**")
     if most_mentioned.empty:
         st.info("StockTwits mention data is unavailable. Run a refresh later.")
     else:
         _render_ranked_table(
             most_mentioned,
             "current_mentions",
-            "Current Searches",
+            "Current Mentions",
             "%,.0f",
         )
 
