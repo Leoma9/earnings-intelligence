@@ -29,6 +29,11 @@ st.markdown(
         [data-testid="stMetricLabel"] { color: #9fb0cc; }
         [data-testid="stMetricValue"] { color: #f3f7ff; }
         h1, h2, h3 { color: #f3f7ff; }
+        [data-testid="stSidebarFooter"],
+        [data-testid="stDecoration"],
+        a[href*="streamlit.io"] {
+            display: none !important;
+        }
     </style>
     """,
     unsafe_allow_html=True,
