@@ -18,8 +18,19 @@ _OFF_YAHOO_LIST_RANK = 101
 _CALENDAR_TICKERS_PER_DAY = 6
 _REACTION_BULLISH_PCT = 3.0
 _REACTION_BEARISH_PCT = -3.0
-_HEAT_HIGH = 60.0
-_HEAT_MID = 30.0
+# Display tiers are relative to today's upcoming-earnings batch (not raw /100).
+_TIER_ON_RADAR_PCT = 0.10
+_TIER_WARMING_PCT = 0.25
+_TIER_LABELS = {
+    "on_radar": "On the radar",
+    "warming_up": "Warming up",
+    "background": "Background",
+}
+_TIER_TO_HEAT = {
+    "on_radar": "high",
+    "warming_up": "mid",
+    "background": "low",
+}
 
 # Mega-cap / sector influencers whose prints can move peers.
 _SECTOR_INFLUENCERS: dict[str, tuple[str, ...]] = {
@@ -89,15 +100,107 @@ def reaction_sentiment(reaction_pct: float | None) -> str:
     return "mixed"
 
 
-def attention_heat(attention_score: float | None) -> str:
-    """Bucket upcoming-report attention into high / mid / low heat."""
-    if attention_score is None or pd.isna(attention_score):
+def attention_tier_for_rank(rank: int, total: int) -> str:
+    """Map a 1-based attention rank into an investor-friendly tier.
+
+    Top ~10% of the upcoming batch = on the radar, top ~25% = warming up,
+    everyone else = background. Absolute /100 scores stay for sorting only.
+    """
+    if total <= 0 or rank <= 0:
+        return "background"
+    # #1 → ~100th percentile of the batch.
+    percentile = (total - rank + 1) / total
+    if percentile >= (1.0 - _TIER_ON_RADAR_PCT):
+        return "on_radar"
+    if percentile >= (1.0 - _TIER_WARMING_PCT):
+        return "warming_up"
+    return "background"
+
+
+def attention_tier_label(tier: str | None) -> str:
+    """Human-readable label for an attention tier."""
+    if not tier:
+        return _TIER_LABELS["background"]
+    return _TIER_LABELS.get(tier, _TIER_LABELS["background"])
+
+
+def attention_heat(tier_or_score: str | float | None = None) -> str:
+    """Map a display tier (preferred) or legacy score into CSS heat buckets."""
+    if tier_or_score is None or (isinstance(tier_or_score, float) and pd.isna(tier_or_score)):
         return "none"
-    if attention_score >= _HEAT_HIGH:
+    if isinstance(tier_or_score, str):
+        return _TIER_TO_HEAT.get(tier_or_score, "none")
+    # Legacy absolute-score path kept for older callers/tests.
+    if tier_or_score >= 60:
         return "high"
-    if attention_score >= _HEAT_MID:
+    if tier_or_score >= 30:
         return "mid"
     return "low"
+
+
+def format_attention_headline(
+    rank: int | None, total: int | None, tier: str | None
+) -> str:
+    """Build the primary attention line shown to investors."""
+    label = attention_tier_label(tier)
+    if rank is None or total is None or total <= 0:
+        return label
+    return f"#{int(rank)} of {int(total)} · {label}"
+
+
+def build_why_chips(row: dict[str, object] | pd.Series) -> list[str]:
+    """Plain-language reasons this ticker is getting attention."""
+    def _num(key: str) -> float | None:
+        value = row.get(key) if isinstance(row, dict) else row.get(key)
+        if value is None or (isinstance(value, float) and pd.isna(value)):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    chips: list[str] = []
+    social = _num("social_change")
+    if social is not None and social > 0:
+        chips.append(f"Mentions +{social:,.0f}")
+    yahoo = _num("yahoo_change")
+    if yahoo is None:
+        yahoo = _num("yahoo_rank_change")
+    if yahoo is not None and yahoo > 0:
+        chips.append(f"Yahoo ↑{yahoo:,.0f} ranks")
+    volume_pts = _num("volume_points")
+    if volume_pts is not None and volume_pts >= 40:
+        chips.append("Unusual volume")
+    price = _num("price_growth_pct")
+    if price is not None and price >= 1:
+        chips.append(f"Price +{price:.0f}% (7d)")
+    if not chips:
+        chips.append("Quiet this week")
+    return chips
+
+
+def annotate_attention_display(attention: pd.DataFrame) -> pd.DataFrame:
+    """Add rank, tier, and headline columns for dashboard display."""
+    if attention.empty or "attention_score" not in attention.columns:
+        return attention
+    framed = attention.sort_values(
+        ["attention_score", "ticker"], ascending=[False, True]
+    ).reset_index(drop=True)
+    total = len(framed)
+    framed["attention_rank"] = range(1, total + 1)
+    framed["attention_total"] = total
+    framed["attention_tier"] = [
+        attention_tier_for_rank(int(rank), total) for rank in framed["attention_rank"]
+    ]
+    framed["attention_tier_label"] = framed["attention_tier"].map(attention_tier_label)
+    framed["attention_headline"] = [
+        format_attention_headline(int(rank), total, tier)
+        for rank, tier in zip(framed["attention_rank"], framed["attention_tier"])
+    ]
+    framed["attention_heat"] = framed["attention_tier"].map(
+        lambda tier: attention_heat(str(tier))
+    )
+    return framed
 
 
 def _post_earnings_reaction_pct(
@@ -175,6 +278,19 @@ def build_anticipated_earnings_calendar(
     store = SQLiteStore(database_path)
     events = store.get_earnings_in_month(today.year, today.month)
     metrics = store.get_all_daily_metrics()
+    rankings = store.get_rankings()
+    if rankings.empty and not events.empty:
+        # Historical reference dates (or empty live window) still need relative
+        # tiers from whatever attention scores are attached to this month.
+        scored = events.dropna(subset=["attention_score"])[
+            ["ticker", "attention_score"]
+        ].drop_duplicates(subset=["ticker"])
+        display = annotate_attention_display(scored)
+    else:
+        display = annotate_attention_display(rankings)
+    display_by_ticker = (
+        display.set_index("ticker").to_dict(orient="index") if not display.empty else {}
+    )
     days_in_month = calendar_module.monthrange(today.year, today.month)[1]
     first_weekday = date(today.year, today.month, 1).weekday()
 
@@ -187,30 +303,42 @@ def build_anticipated_earnings_calendar(
         for _, row in events.iterrows():
             event_date = row["earnings_date"]
             event_day = event_date.day
+            ticker = str(row["ticker"])
             score = row.get("attention_score")
             attention_value = (
                 float(score) if score is not None and pd.notna(score) else None
             )
             is_past = event_date < today
             reaction_pct = (
-                _post_earnings_reaction_pct(metrics, str(row["ticker"]), event_date)
+                _post_earnings_reaction_pct(metrics, ticker, event_date)
                 if is_past
                 else None
             )
             sentiment = reaction_sentiment(reaction_pct) if is_past else None
-            heat = attention_heat(attention_value) if not is_past else None
+            display_row = display_by_ticker.get(ticker, {})
+            tier = None if is_past else display_row.get("attention_tier")
+            heat = attention_heat(tier) if not is_past else None
             momentum = (
                 None
                 if is_past
-                else _pre_earnings_momentum(metrics, str(row["ticker"]), event_date)
+                else _pre_earnings_momentum(metrics, ticker, event_date)
             )
             by_day[event_day].append(
                 {
-                    "ticker": str(row["ticker"]),
-                    "company_name": str(row.get("company_name") or row["ticker"]),
+                    "ticker": ticker,
+                    "company_name": str(row.get("company_name") or ticker),
                     "sector": str(row.get("sector") or "") or None,
                     "earnings_date": event_date,
                     "attention_score": attention_value,
+                    "attention_rank": display_row.get("attention_rank"),
+                    "attention_total": display_row.get("attention_total"),
+                    "attention_tier": tier,
+                    "attention_tier_label": (
+                        None if is_past else display_row.get("attention_tier_label")
+                    ),
+                    "attention_headline": (
+                        None if is_past else display_row.get("attention_headline")
+                    ),
                     "is_past": is_past,
                     "reaction_pct": reaction_pct,
                     "sentiment": sentiment,
@@ -315,7 +443,9 @@ def build_earnings_spillover(
             watch_note = "sector lift after bullish print"
         elif item.get("is_past"):
             watch_note = "mixed post-report reaction — watch peers"
-        elif (item.get("attention_score") or 0) >= _HEAT_HIGH:
+        elif item.get("attention_tier") == "on_radar" or (
+            item.get("attention_score") or 0
+        ) >= 60:
             watch_note = "high attention into print — watch peers"
         else:
             watch_note = "upcoming influencer print — watch peers"
@@ -380,9 +510,12 @@ def build_this_week_focus(
     """Return upcoming prints in the next ``days`` days, ranked by attention."""
     if attention.empty or "earnings_date" not in attention.columns:
         return []
+    framed = attention
+    if "attention_tier" not in framed.columns:
+        framed = annotate_attention_display(framed)
     today = reference_date or date.today()
     end = date.fromordinal(today.toordinal() + days)
-    frame = attention.copy()
+    frame = framed.copy()
     frame["earnings_date"] = pd.to_datetime(frame["earnings_date"]).dt.date
     window = frame[
         (frame["earnings_date"] >= today) & (frame["earnings_date"] < end)
@@ -394,13 +527,34 @@ def build_this_week_focus(
             if pd.notna(row.get("attention_score"))
             else None
         )
+        tier = (
+            str(row["attention_tier"])
+            if pd.notna(row.get("attention_tier"))
+            else None
+        )
+        rank = (
+            int(row["attention_rank"])
+            if pd.notna(row.get("attention_rank"))
+            else None
+        )
+        total = (
+            int(row["attention_total"])
+            if pd.notna(row.get("attention_total"))
+            else None
+        )
         results.append(
             {
                 "ticker": str(row["ticker"]),
                 "company_name": str(row.get("company_name") or row["ticker"]),
                 "earnings_date": row["earnings_date"],
                 "attention_score": score,
-                "heat": attention_heat(score),
+                "attention_rank": rank,
+                "attention_total": total,
+                "attention_tier": tier,
+                "attention_tier_label": attention_tier_label(tier),
+                "attention_headline": format_attention_headline(rank, total, tier),
+                "why_chips": build_why_chips(row),
+                "heat": attention_heat(tier),
                 "sector": str(row["sector"])
                 if pd.notna(row.get("sector")) and row.get("sector")
                 else None,
@@ -502,6 +656,7 @@ def load_dashboard_data() -> dict[str, pd.DataFrame]:
     attention = attention.merge(
         _yahoo_rank_change(metrics), on="ticker", how="left"
     )
+    attention = annotate_attention_display(attention)
 
     most_mentioned = attention.dropna(subset=["current_mentions"]).sort_values(
         "current_mentions", ascending=False
@@ -657,11 +812,20 @@ def get_company_data(
         data["attention"],
     )
 
+    why_chips = build_why_chips(score)
+    headline = score.get("attention_headline") or format_attention_headline(
+        score.get("attention_rank"),
+        score.get("attention_total"),
+        score.get("attention_tier"),
+    )
+
     return {
         "metrics": company_metrics,
         "earnings": earnings,
         "score": score,
         "peers": peers,
+        "why_chips": why_chips,
+        "attention_headline": headline,
     }
 
 

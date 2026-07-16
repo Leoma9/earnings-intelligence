@@ -106,12 +106,15 @@ def calculate_attention_scores(
     scored["price_points"] = _normalize_growth(
         scored[price_column], config.price_cap_pct
     )
+    # Always persist numeric yahoo points so dashboard "why" chips can
+    # distinguish "no climb" (0) from "signal missing" only when the column
+    # was absent from the growth frame entirely.
     if yahoo_column in scored.columns:
         scored["yahoo_points"] = _normalize_change(scored[yahoo_column])
         scored["yahoo_change"] = scored[yahoo_column]
     else:
         scored["yahoo_points"] = 0.0
-        scored["yahoo_change"] = pd.NA
+        scored["yahoo_change"] = 0.0
 
     scored["social_change"] = scored[social_column]
     scored["volume_change"] = scored[volume_raw_column]
