@@ -10,6 +10,10 @@ import streamlit as st
 from config.secrets import get_setting
 from src.dashboard.data import (
     build_anticipated_earnings_calendar,
+    build_earnings_spillover,
+    build_this_week_focus,
+    build_weekly_postmortem,
+    coverage_counts,
     format_last_data_refresh,
     get_last_data_refresh_at,
     load_dashboard_data,
@@ -18,7 +22,7 @@ from src.pipeline import run_refresh_pipeline
 
 
 st.set_page_config(
-    page_title="Earnings Intelligence",
+    page_title="MarketsLite",
     page_icon="◈",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -55,11 +59,11 @@ st.markdown(
             padding: 0.35rem 0;
         }
         .earnings-cal-day {
-            min-height: 92px;
+            min-height: 118px;
             background: #121c31;
             border: 1px solid #23304d;
             border-radius: 10px;
-            padding: 8px;
+            padding: 6px 6px 8px 6px;
         }
         .earnings-cal-day.empty {
             background: transparent;
@@ -70,26 +74,141 @@ st.markdown(
             box-shadow: inset 0 0 0 1px rgba(79, 140, 255, 0.35);
         }
         .earnings-cal-day.past {
-            opacity: 0.72;
+            opacity: 0.88;
         }
         .earnings-cal-num {
             color: #9fb0cc;
-            font-size: 0.78rem;
+            font-size: 0.7rem;
             font-weight: 600;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
         .earnings-cal-day.today .earnings-cal-num { color: #93c5fd; }
         .earnings-cal-ticker {
             display: block;
             color: #f3f7ff;
-            font-size: 0.78rem;
-            font-weight: 600;
-            line-height: 1.35;
+            font-size: 0.98rem;
+            font-weight: 700;
+            line-height: 1.25;
+            letter-spacing: 0.01em;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            text-decoration: none;
         }
-        .earnings-cal-ticker.hot { color: #6ee7b7; }
+        a.earnings-cal-ticker:hover { opacity: 0.85; }
+        .earnings-cal-ticker.sent-bullish { color: #6ee7b7; }
+        .earnings-cal-ticker.sent-mixed { color: #fbbf24; }
+        .earnings-cal-ticker.sent-bearish { color: #f87171; }
+        .earnings-cal-ticker.sent-unknown { color: #94a3b8; }
+        .earnings-cal-ticker.heat-high {
+            color: #e2e8f0;
+            text-shadow: 0 0 10px rgba(110, 231, 183, 0.35);
+            border-bottom: 2px solid rgba(110, 231, 183, 0.65);
+        }
+        .earnings-cal-ticker.heat-mid { color: #cbd5e1; }
+        .earnings-cal-ticker.heat-low,
+        .earnings-cal-ticker.heat-none { color: #94a3b8; font-weight: 600; }
+        .earnings-cal-legend {
+            color: #9fb0cc;
+            font-size: 0.82rem;
+            margin: 0.55rem 0 0.15rem 0;
+            line-height: 1.45;
+        }
+        .mobile-cal-hint {
+            display: none;
+            color: #9fb0cc;
+            font-size: 0.85rem;
+            margin: 0.4rem 0 0.2rem 0;
+        }
+        .this-week-list { margin: 0.35rem 0 0.6rem 0; }
+        .this-week-row {
+            display: flex;
+            gap: 10px;
+            align-items: baseline;
+            flex-wrap: wrap;
+            padding: 8px 10px;
+            border-bottom: 1px solid #23304d;
+        }
+        .this-week-date { color: #9fb0cc; font-size: 0.82rem; min-width: 4.5rem; }
+        .this-week-ticker {
+            color: #f3f7ff;
+            font-weight: 700;
+            font-size: 1rem;
+            text-decoration: none;
+        }
+        .this-week-ticker:hover { color: #93c5fd; }
+        .this-week-meta { color: #9fb0cc; font-size: 0.85rem; }
+        .this-week-heat-high { color: #6ee7b7; }
+        .this-week-heat-mid { color: #cbd5e1; }
+        .this-week-heat-low, .this-week-heat-none { color: #94a3b8; }
+        .postmortem-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 0.4rem 0 0.8rem 0;
+        }
+        .postmortem-col {
+            background: #121c31;
+            border: 1px solid #23304d;
+            border-radius: 10px;
+            padding: 12px 14px;
+        }
+        .postmortem-heading {
+            color: #f3f7ff;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .postmortem-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 4px 0;
+            font-size: 0.92rem;
+        }
+        .postmortem-row a {
+            color: #f3f7ff;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .postmortem-row a:hover { color: #93c5fd; }
+        .postmortem-beat { color: #6ee7b7; }
+        .postmortem-miss { color: #f87171; }
+        .spillover-card {
+            background: #121c31;
+            border: 1px solid #23304d;
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-bottom: 8px;
+        }
+        .spillover-title {
+            color: #f3f7ff;
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+        .spillover-title a {
+            color: inherit;
+            text-decoration: none;
+        }
+        .spillover-title a:hover { color: #93c5fd; }
+        .spillover-meta { color: #9fb0cc; font-size: 0.82rem; margin-top: 2px; }
+        .spillover-peers { color: #cbd5e1; font-size: 0.88rem; margin-top: 6px; }
+        .spillover-peers a {
+            color: #93c5fd;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .spillover-peers a:hover { text-decoration: underline; }
+        .spillover-status-bullish { color: #6ee7b7; }
+        .spillover-status-bearish { color: #f87171; }
+        .spillover-status-mixed { color: #fbbf24; }
+        .spillover-status-upcoming { color: #93c5fd; }
+        .spillover-status-unknown { color: #94a3b8; }
+        @media (max-width: 768px) {
+            .earnings-cal,
+            .earnings-cal-legend { display: none !important; }
+            .mobile-cal-hint { display: block; }
+            .postmortem-grid { grid-template-columns: 1fr; }
+        }
     </style>
     """,
     unsafe_allow_html=True,
@@ -102,6 +221,11 @@ def get_data() -> dict[str, pd.DataFrame]:
     return load_dashboard_data()
 
 
+def _company_href(ticker: str) -> str:
+    """Build an in-app Company page link for a ticker."""
+    return f"/Company?ticker={str(ticker).upper()}"
+
+
 def _render_ranked_table(
     data: pd.DataFrame,
     value_column: str,
@@ -111,15 +235,90 @@ def _render_ranked_table(
     """Render a numbered top-10 table shared by Yahoo and StockTwits sections."""
     display = data.head(10).copy()
     display.insert(0, "rank", range(1, len(display) + 1))
+    display["ticker_link"] = display["ticker"].map(_company_href)
     st.dataframe(
         display[
-            ["rank", "ticker", "company_name", "earnings_date", value_column]
+            ["rank", "ticker_link", "company_name", "earnings_date", value_column]
         ],
         use_container_width=True,
         hide_index=True,
         column_config={
+            "ticker_link": st.column_config.LinkColumn(
+                "Ticker",
+                display_text=r"ticker=([A-Z0-9.\-]+)",
+            ),
             value_column: st.column_config.NumberColumn(value_label, format=value_format),
         },
+    )
+
+
+def _render_this_week(focus: list[dict[str, object]]) -> None:
+    """Render the mobile-first This week’s prints list."""
+    if not focus:
+        st.info("No tracked prints in the next 7 days.")
+        return
+    rows: list[str] = []
+    for item in focus:
+        heat = str(item.get("heat") or "none")
+        score = item.get("attention_score")
+        score_text = f"{score:.0f}/100" if score is not None else "—"
+        event_date = item["earnings_date"]
+        date_text = (
+            event_date.strftime("%b %d")
+            if hasattr(event_date, "strftime")
+            else str(event_date)
+        )
+        rows.append(
+            f'<div class="this-week-row">'
+            f'<span class="this-week-date">{date_text}</span>'
+            f'<a class="this-week-ticker" href="{_company_href(str(item["ticker"]))}">'
+            f'{item["ticker"]}</a>'
+            f'<span class="this-week-meta">{item.get("company_name")}</span>'
+            f'<span class="this-week-meta this-week-heat-{heat}">'
+            f"attention {score_text} · {heat} heat</span>"
+            f"</div>"
+        )
+    st.markdown(
+        f'<div class="this-week-list">{"".join(rows)}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _render_weekly_postmortem(postmortem: dict[str, list[dict[str, object]]]) -> None:
+    """Render biggest post-report beats and misses from the last week."""
+    beats = postmortem.get("beats") or []
+    misses = postmortem.get("misses") or []
+    if not beats and not misses:
+        st.info("No post-report price reactions in the last 7 days yet.")
+        return
+
+    def _rows(items: list[dict[str, object]], kind: str) -> str:
+        if not items:
+            return '<div class="this-week-meta">None yet.</div>'
+        parts: list[str] = []
+        for item in items:
+            reaction = float(item["reaction_pct"])
+            parts.append(
+                f'<div class="postmortem-row">'
+                f'<a href="{_company_href(str(item["ticker"]))}">{item["ticker"]}</a>'
+                f'<span class="postmortem-{kind}">{reaction:+.1f}%</span>'
+                f"</div>"
+            )
+        return "".join(parts)
+
+    st.markdown(
+        f'<div class="postmortem-grid">'
+        f'<div class="postmortem-col">'
+        f'<div class="postmortem-heading">Biggest beats</div>'
+        f"{_rows(beats, 'beat')}</div>"
+        f'<div class="postmortem-col">'
+        f'<div class="postmortem-heading">Biggest misses</div>'
+        f"{_rows(misses, 'miss')}</div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "Based on next-day price reaction after the report — not attention heat."
     )
 
 
@@ -199,19 +398,36 @@ def _render_earnings_calendar(calendar_data: dict[str, object]) -> None:
             classes.append("past")
 
         tickers = days.get(day, [])
-        ticker_html = "".join(
-            (
-                f'<span class="earnings-cal-ticker'
-                f'{" hot" if item.get("attention_score") is not None and item["attention_score"] >= 50 else ""}"'
-                f' title="{item["company_name"]}">'
-                f'{item["ticker"]}</span>'
+        ticker_parts: list[str] = []
+        for item in tickers:
+            label = str(item["ticker"])
+            title = str(item.get("company_name") or label)
+            css = "earnings-cal-ticker"
+            if item.get("is_past"):
+                sentiment = item.get("sentiment") or "unknown"
+                css = f"{css} sent-{sentiment}"
+                reaction = item.get("reaction_pct")
+                if reaction is not None:
+                    title = f"{title} · {reaction:+.1f}% after report"
+            else:
+                heat = item.get("heat") or "none"
+                css = f"{css} heat-{heat}"
+                momentum = item.get("momentum")
+                if momentum:
+                    label = f"{label} {momentum}"
+                    title = f"{title} · pre-report momentum {momentum} (not earnings result)"
+                score = item.get("attention_score")
+                if score is not None:
+                    title = f"{title} · attention {score:.0f}/100"
+            ticker_parts.append(
+                f'<a class="{css}" href="{_company_href(str(item["ticker"]))}" '
+                f'title="{title}">{label}</a>'
             )
-            for item in tickers
-        )
+
         cells.append(
             f'<div class="{" ".join(classes)}">'
             f'<div class="earnings-cal-num">{day}</div>'
-            f"{ticker_html}"
+            f"{''.join(ticker_parts)}"
             f"</div>"
         )
 
@@ -223,6 +439,59 @@ def _render_earnings_calendar(calendar_data: dict[str, object]) -> None:
         f'<div class="earnings-cal">{"".join(cells)}</div>',
         unsafe_allow_html=True,
     )
+    st.markdown(
+        '<div class="earnings-cal-legend">'
+        "<b>Past days:</b> green = bullish price reaction (≥+3%), "
+        "yellow = mixed (−3% to +3%), red = bearish (≤−3%). "
+        "<b>Upcoming:</b> brighter tickers = higher attention heat; "
+        "↑/↓ = pre-report price momentum (not the earnings outcome)."
+        "</div>"
+        '<div class="mobile-cal-hint">'
+        "Month calendar is easiest on desktop — use This week’s prints above."
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _render_earnings_spillover(spillover: list[dict[str, object]]) -> None:
+    """Render mega-cap influencers and same-sector peers under the calendar."""
+    if not spillover:
+        st.caption("No mega-cap influencers on this month’s calendar yet.")
+        return
+
+    st.markdown("**Who can move the tape**")
+    st.caption(
+        "Large names on this month’s calendar and same-sector peers that may "
+        "be lifted or dragged with them. Macro headlines coming later."
+    )
+    for item in spillover:
+        status = str(item.get("status") or "unknown")
+        status_label = status.replace("_", " ")
+        reaction = item.get("reaction_pct")
+        reaction_bit = (
+            f" · {reaction:+.1f}% after report" if reaction is not None else ""
+        )
+        peers = item.get("peers") or []
+        peer_text = (
+            ", ".join(
+                f'<a href="{_company_href(str(peer["ticker"]))}">{peer["ticker"]}</a>'
+                for peer in peers
+            )
+            if peers
+            else "No tracked same-sector peers yet"
+        )
+        st.markdown(
+            f'<div class="spillover-card">'
+            f'<div class="spillover-title">'
+            f'<a href="{_company_href(str(item["ticker"]))}">{item["ticker"]}</a> '
+            f'<span class="spillover-status-{status}">({status_label})</span>'
+            f"{reaction_bit}</div>"
+            f'<div class="spillover-meta">{item.get("company_name")} · '
+            f'{item.get("sector")} · {item.get("watch_note")}</div>'
+            f'<div class="spillover-peers"><b>Blast radius:</b> {peer_text}</div>'
+            f"</div>",
+            unsafe_allow_html=True,
+        )
 
 data = get_data()
 attention = data["attention"]
@@ -235,11 +504,11 @@ yahoo_rank_drop = data["yahoo_rank_drop"]
 social_drop = data["social_drop"]
 
 with st.sidebar:
-    st.markdown("## ◈ Earnings Intel")
+    st.markdown("## ◈ MarketsLite")
     st.caption("Investor attention before earnings")
     st.divider()
     st.markdown("**Dashboard**")
-    st.caption("Use the Company page in the sidebar for individual research.")
+    st.caption("Click any ticker to open Company research.")
     st.divider()
     st.markdown("**Version 1 model**")
     st.caption(
@@ -294,6 +563,13 @@ if attention.empty:
     )
     st.stop()
 
+coverage = coverage_counts(attention, data["metrics"])
+st.caption(
+    f"Tracking {coverage['tracked']} companies with upcoming earnings · "
+    f"Yahoo ranks available for {coverage['yahoo']} · "
+    f"StockTwits mentions for {coverage['stocktwits']}"
+)
+
 next_earnings = earnings["earnings_date"].min() if not earnings.empty else "—"
 top_yahoo = (
     most_trending_yahoo.iloc[0]
@@ -320,16 +596,16 @@ metric_columns[3].metric(
 metric_columns[4].metric("Next earnings", next_earnings)
 
 st.divider()
-st.subheader("Most anticipated earnings this month")
-month_calendar = build_anticipated_earnings_calendar()
+st.subheader("This week’s prints")
 st.caption(
-    f"{month_calendar['month_label']} · ranked by attention score · "
-    "updates automatically each month"
+    "Highest-attention upcoming reports in the next 7 days. "
+    "Heat is attention into the print — not the earnings outcome."
 )
-if month_calendar["event_count"] == 0:
-    st.info("No tracked earnings dates fall in this calendar month yet.")
-else:
-    _render_earnings_calendar(month_calendar)
+_render_this_week(build_this_week_focus(attention))
+
+month_calendar = build_anticipated_earnings_calendar()
+st.subheader("Last 7 days: biggest beats & misses")
+_render_weekly_postmortem(build_weekly_postmortem(month_calendar))
 
 st.divider()
 st.subheader("Trending ahead of earnings")
@@ -339,7 +615,10 @@ yahoo_col, stocktwits_col = st.columns(2)
 with yahoo_col:
     st.markdown("**Most trending**")
     if most_trending_yahoo.empty:
-        st.info("Yahoo trending data is unavailable. Run a refresh later.")
+        st.info(
+            "Yahoo trending ranks missing in the latest refresh — "
+            "coverage may be incomplete."
+        )
     else:
         _render_ranked_table(
             most_trending_yahoo,
@@ -351,7 +630,10 @@ with yahoo_col:
 with stocktwits_col:
     st.markdown("**Most mentioned**")
     if most_mentioned.empty:
-        st.info("StockTwits mention data is unavailable. Run a refresh later.")
+        st.info(
+            "StockTwits mentions missing in the latest refresh — "
+            "coverage may be incomplete."
+        )
     else:
         _render_ranked_table(
             most_mentioned,
@@ -367,7 +649,10 @@ with yahoo_chart_col:
     st.markdown("**Yahoo Finance**")
     st.caption("Source: Yahoo Finance US trending symbols API, refreshed daily.")
     if most_trending_yahoo.empty:
-        st.info("Yahoo trending data is unavailable. Run a refresh later.")
+        st.info(
+            "Yahoo trending ranks missing in the latest refresh — "
+            "coverage may be incomplete."
+        )
     else:
         _render_yahoo_chart(most_trending_yahoo)
 
@@ -375,7 +660,10 @@ with stocktwits_chart_col:
     st.markdown("**StockTwits**")
     st.caption("Source: StockTwits public mention stream, refreshed daily.")
     if most_mentioned.empty:
-        st.info("StockTwits mention data is unavailable. Run a refresh later.")
+        st.info(
+            "StockTwits mentions missing in the latest refresh — "
+            "coverage may be incomplete."
+        )
     else:
         _render_mention_chart(most_mentioned, "current_mentions", "Searches")
 
@@ -442,3 +730,17 @@ with stocktwits_drop_col:
             "Mentions Lost (7D)",
             "%+,.0f",
         )
+
+st.divider()
+st.subheader("Most anticipated earnings this month")
+st.caption(
+    f"{month_calendar['month_label']} · past days colored by post-report price reaction · "
+    "upcoming days by attention heat · updates automatically each month"
+)
+if month_calendar["event_count"] == 0:
+    st.info("No tracked earnings dates fall in this calendar month yet.")
+else:
+    _render_earnings_calendar(month_calendar)
+    spillover = build_earnings_spillover(month_calendar, attention)
+    st.subheader("Earnings spillover watch")
+    _render_earnings_spillover(spillover)
