@@ -9,11 +9,15 @@ from src.dashboard.data import (
     _latest_current_mentions,
     _latest_yahoo_ranks,
     _yahoo_rank_change,
+    annotate_attention_display,
     attention_heat,
+    attention_tier_for_rank,
     build_anticipated_earnings_calendar,
     build_earnings_spillover,
     build_this_week_focus,
     build_weekly_postmortem,
+    build_why_chips,
+    format_attention_headline,
     format_last_data_refresh,
     get_last_data_refresh_at,
     load_dashboard_data,
@@ -191,6 +195,8 @@ class DashboardDataTests(unittest.TestCase):
         )
         self.assertEqual(march["days"][5][0]["heat"], "high")
         self.assertEqual(march["days"][5][1]["heat"], "low")
+        self.assertEqual(march["days"][5][0]["attention_tier"], "on_radar")
+        self.assertEqual(march["days"][5][1]["attention_tier"], "background")
         self.assertEqual(march["event_count"], 2)
         self.assertEqual(april["month_label"], "April 2026")
         self.assertEqual(
@@ -208,10 +214,52 @@ class DashboardDataTests(unittest.TestCase):
         self.assertEqual(reaction_sentiment(-2.9), "mixed")
         self.assertEqual(reaction_sentiment(None), "unknown")
 
-    def test_attention_heat_buckets(self) -> None:
+    def test_attention_display_tiers_and_why_chips(self) -> None:
+        self.assertEqual(attention_tier_for_rank(1, 10), "on_radar")
+        self.assertEqual(attention_tier_for_rank(2, 10), "on_radar")
+        self.assertEqual(attention_tier_for_rank(3, 10), "warming_up")
+        self.assertEqual(attention_tier_for_rank(8, 10), "background")
+        self.assertEqual(
+            format_attention_headline(3, 100, "warming_up"),
+            "#3 of 100 · Warming up",
+        )
+        self.assertEqual(attention_heat("on_radar"), "high")
+        self.assertEqual(attention_heat("warming_up"), "mid")
+        self.assertEqual(attention_heat("background"), "low")
+        self.assertEqual(attention_heat(None), "none")
+        # Legacy absolute-score path still works for older callers.
         self.assertEqual(attention_heat(60.0), "high")
-        self.assertEqual(attention_heat(30.0), "mid")
-        self.assertEqual(attention_heat(29.9), "low")
+
+        chips = build_why_chips(
+            {
+                "social_change": 120,
+                "yahoo_change": 15,
+                "volume_points": 55,
+                "price_growth_pct": 4.2,
+            }
+        )
+        self.assertEqual(
+            chips,
+            ["Mentions +120", "Yahoo ↑15 ranks", "Unusual volume", "Price +4% (7d)"],
+        )
+        self.assertEqual(build_why_chips({}), ["Quiet this week"])
+
+        framed = annotate_attention_display(
+            pd.DataFrame(
+                {
+                    "ticker": ["A", "B", "C", "D"],
+                    "attention_score": [10.0, 90.0, 40.0, 70.0],
+                }
+            )
+        )
+        self.assertEqual(framed.iloc[0]["ticker"], "B")
+        self.assertEqual(framed.iloc[0]["attention_rank"], 1)
+        self.assertEqual(framed.iloc[0]["attention_tier"], "on_radar")
+
+    def test_attention_heat_buckets(self) -> None:
+        self.assertEqual(attention_heat("on_radar"), "high")
+        self.assertEqual(attention_heat("warming_up"), "mid")
+        self.assertEqual(attention_heat("background"), "low")
         self.assertEqual(attention_heat(None), "none")
 
     def test_past_day_sorts_bearish_first_by_reaction(self) -> None:
@@ -371,8 +419,11 @@ class DashboardDataTests(unittest.TestCase):
         )
 
         self.assertEqual([item["ticker"] for item in focus], ["HOT", "LOW"])
-        self.assertEqual(focus[0]["heat"], "high")
-        self.assertEqual(focus[1]["heat"], "mid")
+        self.assertEqual(focus[0]["heat"], "mid")
+        self.assertEqual(focus[0]["attention_tier"], "warming_up")
+        self.assertIn("of", focus[0]["attention_headline"])
+        self.assertEqual(focus[1]["heat"], "low")
+        self.assertEqual(focus[1]["attention_tier"], "background")
 
     def test_build_weekly_postmortem_beats_and_misses(self) -> None:
         calendar = {

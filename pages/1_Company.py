@@ -33,13 +33,6 @@ def _format_value(value: object, pattern: str) -> str:
     return pattern % value if value is not None and pd.notna(value) else "—"
 
 
-def _format_points(value: object) -> str:
-    """Format an optional score-component value for the Why ranked strip."""
-    if value is None or (isinstance(value, float) and pd.isna(value)):
-        return "—"
-    return f"{float(value):.0f}"
-
-
 st.set_page_config(
     page_title="Company Research | MarketsLite", page_icon="◈", layout="wide"
 )
@@ -59,6 +52,24 @@ st.markdown(
         h1, h2, h3 { color: #f3f7ff; }
         .peer-link { color: #93c5fd; text-decoration: none; font-weight: 600; }
         .peer-link:hover { text-decoration: underline; }
+        .why-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0.4rem 0 0.8rem; }
+        .why-chip {
+            background: #121c31;
+            border: 1px solid #23304d;
+            color: #cbd5e1;
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: 0.88rem;
+            font-weight: 600;
+        }
+        .why-chip.active { border-color: #4f8cff; color: #f3f7ff; }
+        .attention-hero {
+            color: #f3f7ff;
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin: 0.2rem 0 0.15rem;
+        }
+        .attention-index { color: #9fb0cc; font-size: 0.85rem; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -101,6 +112,8 @@ metrics = company["metrics"].copy()
 earnings = company["earnings"]
 score = company["score"]
 peers = company.get("peers") or []
+why_chips = company.get("why_chips") or ["Quiet this week"]
+headline = company.get("attention_headline") or "Background"
 
 if metrics.empty:
     st.warning(f"No historical metrics are available for {selected_ticker}.")
@@ -116,35 +129,30 @@ st.caption(
     + (f" · {earnings['sector']}" if earnings.get("sector") else "")
 )
 
-summary, score_col, earnings_col, volume_col = st.columns(4)
+summary, attention_col, earnings_col, volume_col = st.columns(4)
 summary.metric(
     "Last close", f"${latest['close']:,.2f}" if pd.notna(latest["close"]) else "—"
 )
-score_col.metric(
-    "Attention score",
-    f"{score.get('attention_score', 0):.1f}/100"
-    if score.get("attention_score") is not None
-    else "—",
-)
+attention_col.metric("Attention", headline)
 earnings_col.metric("Earnings date", earnings.get("earnings_date", "—"))
 volume_col.metric(
     "Latest volume",
     f"{int(latest['volume']):,}" if pd.notna(latest["volume"]) else "—",
 )
 
-st.markdown("**Why ranked**")
-st.caption(
-    "Component points from the Version 1 attention model "
-    "(higher = more contribution to the score)."
+st.markdown("**Why it’s getting attention**")
+st.caption("What moved over the last 7 days — not the earnings outcome.")
+chip_html = "".join(
+    f'<span class="why-chip{" active" if chip != "Quiet this week" else ""}">{chip}</span>'
+    for chip in why_chips
 )
-why_cols = st.columns(4)
-why_cols[0].metric("StockTwits", _format_points(score.get("social_points")))
-why_cols[1].metric("Yahoo climb", _format_points(score.get("yahoo_points")))
-why_cols[2].metric("Rel. volume", _format_points(score.get("volume_points")))
-why_cols[3].metric("Price momentum", _format_points(score.get("price_points")))
+st.markdown(f'<div class="why-chips">{chip_html}</div>', unsafe_allow_html=True)
+index_value = score.get("attention_score")
+if index_value is not None and pd.notna(index_value):
+    st.caption(f"Attention index {float(index_value):.0f} (internal ranking signal)")
 
 st.divider()
-chart_col, gauge_col = st.columns([1.6, 1])
+chart_col, detail_col = st.columns([1.6, 1])
 
 with chart_col:
     st.subheader("Price history")
@@ -162,37 +170,14 @@ with chart_col:
     price.update_layout(**_chart_layout("Close price (USD)"))
     st.plotly_chart(price, use_container_width=True, config={"displayModeBar": False})
 
-with gauge_col:
-    st.subheader("Attention score")
-    gauge = go.Figure(
-        go.Indicator(
-            mode="gauge+number",
-            value=float(score.get("attention_score") or 0),
-            number={"suffix": " / 100", "font": {"color": "#f3f7ff"}},
-            gauge={
-                "axis": {"range": [0, 100], "tickcolor": "#9fb0cc"},
-                "bar": {"color": "#60a5fa"},
-                "bgcolor": "#121c31",
-                "bordercolor": "#23304d",
-                "steps": [
-                    {"range": [0, 35], "color": "#1e293b"},
-                    {"range": [35, 70], "color": "#263752"},
-                    {"range": [70, 100], "color": "#1f4c50"},
-                ],
-            },
-        )
-    )
-    gauge.update_layout(
-        height=300, margin=dict(l=20, r=20, t=30, b=10), paper_bgcolor="#121c31"
-    )
-    st.plotly_chart(gauge, use_container_width=True, config={"displayModeBar": False})
-
-    st.caption(
-        "40% StockTwits mentions · 25% Yahoo trend climb · "
-        "20% relative volume · 15% price momentum"
-    )
+with detail_col:
+    st.subheader("Report snapshot")
     st.metric("Est. EPS", _format_value(earnings.get("estimated_eps"), "$%.2f"))
     st.metric("Est. revenue", format_market_cap(earnings.get("estimated_revenue")))
+    st.caption(
+        "Attention ranks names by StockTwits mentions, Yahoo trend climbs, "
+        "unusual volume, and price momentum ahead of earnings."
+    )
 
 st.subheader("Same-sector peers")
 if not peers:

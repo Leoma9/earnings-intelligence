@@ -9,6 +9,7 @@ import streamlit as st
 
 from config.secrets import get_setting
 from src.dashboard.data import (
+    attention_tier_label,
     build_anticipated_earnings_calendar,
     build_earnings_spillover,
     build_this_week_focus,
@@ -139,8 +140,12 @@ st.markdown(
         .this-week-ticker:hover { color: #93c5fd; }
         .this-week-meta { color: #9fb0cc; font-size: 0.85rem; }
         .this-week-heat-high { color: #6ee7b7; }
-        .this-week-heat-mid { color: #cbd5e1; }
+        .this-week-heat-mid { color: #93c5fd; }
         .this-week-heat-low, .this-week-heat-none { color: #94a3b8; }
+        .why-chip-inline {
+            color: #9fb0cc;
+            font-size: 0.82rem;
+        }
         .postmortem-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -260,8 +265,11 @@ def _render_this_week(focus: list[dict[str, object]]) -> None:
     rows: list[str] = []
     for item in focus:
         heat = str(item.get("heat") or "none")
-        score = item.get("attention_score")
-        score_text = f"{score:.0f}/100" if score is not None else "—"
+        headline = item.get("attention_headline") or attention_tier_label(
+            item.get("attention_tier")
+        )
+        chips = item.get("why_chips") or []
+        chip_text = " · ".join(str(chip) for chip in chips[:2])
         event_date = item["earnings_date"]
         date_text = (
             event_date.strftime("%b %d")
@@ -273,9 +281,8 @@ def _render_this_week(focus: list[dict[str, object]]) -> None:
             f'<span class="this-week-date">{date_text}</span>'
             f'<a class="this-week-ticker" href="{_company_href(str(item["ticker"]))}">'
             f'{item["ticker"]}</a>'
-            f'<span class="this-week-meta">{item.get("company_name")}</span>'
-            f'<span class="this-week-meta this-week-heat-{heat}">'
-            f"attention {score_text} · {heat} heat</span>"
+            f'<span class="this-week-meta this-week-heat-{heat}">{headline}</span>'
+            f'<span class="why-chip-inline">{chip_text}</span>'
             f"</div>"
         )
     st.markdown(
@@ -417,8 +424,11 @@ def _render_earnings_calendar(calendar_data: dict[str, object]) -> None:
                     label = f"{label} {momentum}"
                     title = f"{title} · pre-report momentum {momentum} (not earnings result)"
                 score = item.get("attention_score")
-                if score is not None:
-                    title = f"{title} · attention {score:.0f}/100"
+                headline = item.get("attention_headline")
+                if headline:
+                    title = f"{title} · {headline}"
+                elif score is not None:
+                    title = f"{title} · attention index {score:.0f}"
             ticker_parts.append(
                 f'<a class="{css}" href="{_company_href(str(item["ticker"]))}" '
                 f'title="{title}">{label}</a>'
@@ -443,7 +453,8 @@ def _render_earnings_calendar(calendar_data: dict[str, object]) -> None:
         '<div class="earnings-cal-legend">'
         "<b>Past days:</b> green = bullish price reaction (≥+3%), "
         "yellow = mixed (−3% to +3%), red = bearish (≤−3%). "
-        "<b>Upcoming:</b> brighter tickers = higher attention heat; "
+        "<b>Upcoming:</b> brighter tickers = higher relative attention "
+        "(On the radar / Warming up); "
         "↑/↓ = pre-report price momentum (not the earnings outcome)."
         "</div>"
         '<div class="mobile-cal-hint">'
@@ -591,7 +602,10 @@ metric_columns[2].metric(
     f"{top_mentions_value:,.0f}" if top_mentions_value is not None else "—",
 )
 metric_columns[3].metric(
-    "Average attention score", f"{attention['attention_score'].mean():.1f}/100"
+    "On the radar",
+    f"{int((attention['attention_tier'] == 'on_radar').sum()):,}"
+    if "attention_tier" in attention.columns
+    else "—",
 )
 metric_columns[4].metric("Next earnings", next_earnings)
 
@@ -599,7 +613,7 @@ st.divider()
 st.subheader("This week’s prints")
 st.caption(
     "Highest-attention upcoming reports in the next 7 days. "
-    "Heat is attention into the print — not the earnings outcome."
+    "Rank is among all tracked upcoming earnings — not a grade out of 100."
 )
 _render_this_week(build_this_week_focus(attention))
 
@@ -735,7 +749,8 @@ st.divider()
 st.subheader("Most anticipated earnings this month")
 st.caption(
     f"{month_calendar['month_label']} · past days colored by post-report price reaction · "
-    "upcoming days by attention heat · updates automatically each month"
+    "upcoming days by relative attention (On the radar / Warming up) · "
+    "updates automatically each month"
 )
 if month_calendar["event_count"] == 0:
     st.info("No tracked earnings dates fall in this calendar month yet.")
