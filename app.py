@@ -4,7 +4,6 @@ import hmac
 from datetime import date
 
 import pandas as pd
-import plotly.express as px
 import streamlit as st
 
 from config.secrets import get_setting
@@ -329,59 +328,6 @@ def _render_weekly_postmortem(postmortem: dict[str, list[dict[str, object]]]) ->
     )
 
 
-def _render_mention_chart(data: pd.DataFrame, x_column: str, x_title: str) -> None:
-    """Render a horizontal bar chart for absolute search-volume leaders."""
-    chart_data = data.head(10).sort_values(x_column)
-    max_value = chart_data[x_column].max()
-    x_max = max(max_value * 1.15, 35)
-    figure = px.bar(
-        chart_data,
-        x=x_column,
-        y="ticker",
-        orientation="h",
-        color=x_column,
-        color_continuous_scale=["#273a66", "#4f8cff", "#6ee7b7"],
-    )
-    figure.update_layout(
-        height=420,
-        margin=dict(l=0, r=0, t=10, b=0),
-        coloraxis_showscale=False,
-        paper_bgcolor="#121c31",
-        plot_bgcolor="#121c31",
-        font_color="#dbeafe",
-        xaxis_title=x_title,
-        yaxis_title="",
-        xaxis=dict(range=[0, x_max]),
-    )
-    st.plotly_chart(figure, use_container_width=True, config={"displayModeBar": False})
-
-
-def _render_yahoo_chart(data: pd.DataFrame) -> None:
-    """Render Yahoo trending ranks as bars (lower rank number = longer bar)."""
-    chart_data = data.head(10).copy()
-    chart_data["trend_strength"] = 101 - chart_data["current_yahoo_rank"]
-    chart_data = chart_data.sort_values("trend_strength")
-    figure = px.bar(
-        chart_data,
-        x="trend_strength",
-        y="ticker",
-        orientation="h",
-        color="trend_strength",
-        color_continuous_scale=["#273a66", "#4f8cff", "#6ee7b7"],
-    )
-    figure.update_layout(
-        height=420,
-        margin=dict(l=0, r=0, t=10, b=0),
-        coloraxis_showscale=False,
-        paper_bgcolor="#121c31",
-        plot_bgcolor="#121c31",
-        font_color="#dbeafe",
-        xaxis_title="Trend strength (#1 = highest)",
-        yaxis_title="",
-    )
-    st.plotly_chart(figure, use_container_width=True, config={"displayModeBar": False})
-
-
 def _render_earnings_calendar(calendar_data: dict[str, object]) -> None:
     """Render a month grid of the highest-attention earnings dates."""
     today = calendar_data["today"]
@@ -511,8 +457,6 @@ social_growth = data["social_growth"]
 most_mentioned = data["most_mentioned"]
 most_trending_yahoo = data["most_trending_yahoo"]
 yahoo_rank_growth = data["yahoo_rank_growth"]
-yahoo_rank_drop = data["yahoo_rank_drop"]
-social_drop = data["social_drop"]
 
 with st.sidebar:
     st.markdown("## ◈ MarketsLite")
@@ -582,32 +526,10 @@ st.caption(
 )
 
 next_earnings = earnings["earnings_date"].min() if not earnings.empty else "—"
-top_yahoo = (
-    most_trending_yahoo.iloc[0]
-    if not most_trending_yahoo.empty
-    else None
-)
-top_mentions_value = (
-    most_mentioned["current_mentions"].max() if not most_mentioned.empty else None
-)
 
-metric_columns = st.columns(5)
+metric_columns = st.columns(2)
 metric_columns[0].metric("Tracked companies", f"{len(attention):,}")
-metric_columns[1].metric(
-    "Top Yahoo trend",
-    f"#{int(top_yahoo['current_yahoo_rank'])}" if top_yahoo is not None else "—",
-)
-metric_columns[2].metric(
-    "Top StockTwits searches",
-    f"{top_mentions_value:,.0f}" if top_mentions_value is not None else "—",
-)
-metric_columns[3].metric(
-    "On the radar",
-    f"{int((attention['attention_tier'] == 'on_radar').sum()):,}"
-    if "attention_tier" in attention.columns
-    else "—",
-)
-metric_columns[4].metric("Next earnings", next_earnings)
+metric_columns[1].metric("Next earnings", next_earnings)
 
 st.divider()
 st.subheader("This week’s prints")
@@ -656,31 +578,6 @@ with stocktwits_col:
             "%,.0f",
         )
 
-st.subheader("Search volume leaders")
-yahoo_chart_col, stocktwits_chart_col = st.columns(2)
-
-with yahoo_chart_col:
-    st.markdown("**Yahoo Finance**")
-    st.caption("Source: Yahoo Finance US trending symbols API, refreshed daily.")
-    if most_trending_yahoo.empty:
-        st.info(
-            "Yahoo trending ranks missing in the latest refresh — "
-            "coverage may be incomplete."
-        )
-    else:
-        _render_yahoo_chart(most_trending_yahoo)
-
-with stocktwits_chart_col:
-    st.markdown("**StockTwits**")
-    st.caption("Source: StockTwits public mention stream, refreshed daily.")
-    if most_mentioned.empty:
-        st.info(
-            "StockTwits mentions missing in the latest refresh — "
-            "coverage may be incomplete."
-        )
-    else:
-        _render_mention_chart(most_mentioned, "current_mentions", "Searches")
-
 st.divider()
 st.subheader("Highest increase in searches")
 
@@ -709,39 +606,6 @@ with stocktwits_growth_col:
             social_growth,
             "social_change",
             "Mentions Gained (7D)",
-            "%+,.0f",
-        )
-
-st.subheader("Biggest drop over the last 7 days")
-
-yahoo_drop_col, stocktwits_drop_col = st.columns(2)
-
-with yahoo_drop_col:
-    st.markdown("**Yahoo Finance**")
-    st.caption(
-        "Ranked by how many trending positions fell over the last 7 days "
-        "(includes tickers that left Yahoo's top 100)."
-    )
-    if yahoo_rank_drop.empty:
-        st.info("No Yahoo rank declines in the last 7 days yet.")
-    else:
-        _render_ranked_table(
-            yahoo_rank_drop,
-            "yahoo_rank_change",
-            "Ranks Fallen (7D)",
-            "%+,.0f",
-        )
-
-with stocktwits_drop_col:
-    st.markdown("**StockTwits**")
-    st.caption("Ranked by StockTwits mention decline over the last 7 days.")
-    if social_drop.empty:
-        st.info("No StockTwits mention declines in the last 7 days yet.")
-    else:
-        _render_ranked_table(
-            social_drop,
-            "social_change",
-            "Mentions Lost (7D)",
             "%+,.0f",
         )
 
