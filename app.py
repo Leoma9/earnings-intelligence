@@ -13,7 +13,6 @@ from src.dashboard.data import (
     build_earnings_spillover,
     build_this_week_focus,
     build_weekly_postmortem,
-    coverage_counts,
     format_last_data_refresh,
     get_last_data_refresh_at,
     load_dashboard_data,
@@ -43,6 +42,14 @@ st.markdown(
         [data-testid="stMetricLabel"] { color: #9fb0cc; }
         [data-testid="stMetricValue"] { color: #f3f7ff; }
         h1, h2, h3 { color: #f3f7ff; }
+        .trending-column-title {
+            color: #f3f7ff;
+            font-size: 1rem;
+            font-weight: 700;
+            line-height: 1.5;
+            margin: 0 0 0.5rem 0;
+            min-height: 1.5rem;
+        }
         .earnings-cal {
             display: grid;
             grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -507,7 +514,8 @@ with st.sidebar:
 
 st.title("Most Watched Upcoming Earnings")
 st.caption(
-    "Companies ranked based on investor search activity ahead of earnings reports"
+    "Companies ranked based on investor search activity and mentions "
+    "ahead of earnings reports"
 )
 refresh_label = format_last_data_refresh(get_last_data_refresh_at())
 if refresh_label:
@@ -522,13 +530,6 @@ if attention.empty:
     )
     st.stop()
 
-coverage = coverage_counts(attention, data["metrics"])
-st.caption(
-    f"Tracking {coverage['tracked']} companies with upcoming earnings · "
-    f"Yahoo ranks available for {coverage['yahoo']} · "
-    f"StockTwits mentions for {coverage['stocktwits']}"
-)
-
 next_earnings = earnings["earnings_date"].min() if not earnings.empty else "—"
 
 metric_columns = st.columns(2)
@@ -537,10 +538,7 @@ metric_columns[1].metric("Next earnings", next_earnings)
 
 st.divider()
 st.subheader("This week’s prints")
-st.caption(
-    "Highest-attention upcoming reports in the next 7 days. "
-    "Rank is among all tracked upcoming earnings — not a grade out of 100."
-)
+st.caption("Highest-attention upcoming reports in the next 7 days.")
 _render_this_week(build_this_week_focus(attention))
 
 month_calendar = build_anticipated_earnings_calendar()
@@ -553,7 +551,10 @@ st.subheader("Trending ahead of earnings")
 yahoo_col, stocktwits_col = st.columns(2)
 
 with yahoo_col:
-    st.markdown("**Most Searched**")
+    st.markdown(
+        '<div class="trending-column-title">Most Searched</div>',
+        unsafe_allow_html=True,
+    )
     if yahoo_rank_growth.empty:
         st.info("No Yahoo rank climbers in the last 7 days yet.")
     else:
@@ -565,7 +566,10 @@ with yahoo_col:
         )
 
 with stocktwits_col:
-    st.markdown("**Most mentioned**")
+    st.markdown(
+        '<div class="trending-column-title">Most Mentioned</div>',
+        unsafe_allow_html=True,
+    )
     if most_mentioned.empty:
         st.info(
             "StockTwits mentions missing in the latest refresh — "
