@@ -6,6 +6,7 @@ import streamlit as st
 
 from src.dashboard.data import (
     format_market_cap,
+    format_share_volume,
     get_company_data,
     get_researchable_tickers,
 )
@@ -48,7 +49,17 @@ st.markdown(
         [data-testid="stMetric"] {
             background: #121c31; border: 1px solid #23304d; border-radius: 10px;
             padding: 14px;
+            min-height: 108px;
         }
+        [data-testid="stMetricValue"] {
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: unset !important;
+            line-height: 1.25 !important;
+            font-size: 1.15rem !important;
+            word-break: break-word;
+        }
+        [data-testid="stMetricLabel"] { color: #9fb0cc; }
         h1, h2, h3 { color: #f3f7ff; }
         .peer-link { color: #93c5fd; text-decoration: none; font-weight: 600; }
         .peer-link:hover { text-decoration: underline; }
@@ -63,13 +74,25 @@ st.markdown(
             font-weight: 600;
         }
         .why-chip.active { border-color: #4f8cff; color: #f3f7ff; }
-        .attention-hero {
-            color: #f3f7ff;
-            font-size: 1.35rem;
-            font-weight: 700;
-            margin: 0.2rem 0 0.15rem;
+        .attention-card {
+            background: #121c31;
+            border: 1px solid #23304d;
+            border-radius: 10px;
+            padding: 14px;
+            min-height: 108px;
         }
-        .attention-index { color: #9fb0cc; font-size: 0.85rem; }
+        .attention-card-label {
+            color: #9fb0cc;
+            font-size: 0.85rem;
+            margin-bottom: 6px;
+        }
+        .attention-card-value {
+            color: #f3f7ff;
+            font-size: 1.15rem;
+            font-weight: 700;
+            line-height: 1.3;
+            word-break: break-word;
+        }
     </style>
     """,
     unsafe_allow_html=True,
@@ -133,11 +156,17 @@ summary, attention_col, earnings_col, volume_col = st.columns(4)
 summary.metric(
     "Last close", f"${latest['close']:,.2f}" if pd.notna(latest["close"]) else "—"
 )
-attention_col.metric("Attention", headline)
+attention_col.markdown(
+    f'<div class="attention-card">'
+    f'<div class="attention-card-label">Attention</div>'
+    f'<div class="attention-card-value">{headline}</div>'
+    f"</div>",
+    unsafe_allow_html=True,
+)
 earnings_col.metric("Earnings date", earnings.get("earnings_date", "—"))
 volume_col.metric(
     "Latest volume",
-    f"{int(latest['volume']):,}" if pd.notna(latest["volume"]) else "—",
+    format_share_volume(latest["volume"]) if pd.notna(latest["volume"]) else "—",
 )
 
 st.markdown("**Why it’s getting attention**")

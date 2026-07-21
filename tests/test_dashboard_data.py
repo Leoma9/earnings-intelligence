@@ -128,12 +128,22 @@ class DashboardDataTests(unittest.TestCase):
             self.assertEqual(moment.tzinfo, timezone.utc)
 
         label = format_last_data_refresh(
-            datetime(2026, 7, 14, 13, 0, tzinfo=timezone.utc)
+            datetime(2026, 7, 14, 13, 0, tzinfo=timezone.utc),
+            now=datetime(2026, 7, 14, 16, 0, tzinfo=timezone.utc),
         )
         self.assertIsNotNone(label)
         assert label is not None
         self.assertTrue(label.startswith("Data last refreshed"))
-        self.assertIn("2026", label)
+        self.assertNotIn("2026", label)
+        self.assertIn("Jul 14", label)
+        self.assertIn("(3 hours ago)", label)
+
+        fresh = format_last_data_refresh(
+            datetime(2026, 7, 14, 15, 30, tzinfo=timezone.utc),
+            now=datetime(2026, 7, 14, 16, 0, tzinfo=timezone.utc),
+        )
+        assert fresh is not None
+        self.assertIn("(less than 1 hour ago)", fresh)
 
     def test_build_anticipated_earnings_calendar_uses_reference_month(self) -> None:
         from pathlib import Path

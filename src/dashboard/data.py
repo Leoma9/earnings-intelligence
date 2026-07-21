@@ -69,10 +69,19 @@ def get_last_data_refresh_at(
     return datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
 
 
-def format_last_data_refresh(moment: datetime | None) -> str | None:
-    """Format a refresh timestamp for display on the homepage."""
+def format_last_data_refresh(
+    moment: datetime | None,
+    now: datetime | None = None,
+) -> str | None:
+    """Format a refresh timestamp for display on the homepage.
+
+    Example: ``Data last refreshed Jul 17 at 12:50 PM EDT (3 hours ago)``.
+    """
     if moment is None:
         return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+
     # Show Eastern time — the product audience and daily job cadence align
     # with US market hours better than raw UTC.
     try:
@@ -80,13 +89,25 @@ def format_last_data_refresh(moment: datetime | None) -> str | None:
 
         local = moment.astimezone(ZoneInfo("America/New_York"))
         zone_label = local.tzname() or "ET"
+        reference = (now or datetime.now(timezone.utc)).astimezone(
+            ZoneInfo("America/New_York")
+        )
     except Exception:
         local = moment.astimezone()
         zone_label = local.tzname() or "local"
+        reference = (now or datetime.now().astimezone()).astimezone()
 
-    # Avoid platform-specific %-d / %-I flags.
-    stamp = local.strftime("%b %d, %Y at %I:%M %p").replace(" 0", " ")
-    return f"Data last refreshed {stamp} {zone_label}"
+    # Avoid platform-specific %-d / %-I flags. No year — freshness matters more.
+    stamp = local.strftime("%b %d at %I:%M %p").replace(" 0", " ")
+    elapsed_seconds = max(0, int((reference - local).total_seconds()))
+    hours_ago = elapsed_seconds // 3600
+    if hours_ago <= 0:
+        age_label = "less than 1 hour ago"
+    elif hours_ago == 1:
+        age_label = "1 hour ago"
+    else:
+        age_label = f"{hours_ago} hours ago"
+    return f"Data last refreshed {stamp} {zone_label} ({age_label})"
 
 
 def reaction_sentiment(reaction_pct: float | None) -> str:
@@ -838,3 +859,17 @@ def format_market_cap(value: float | int | None) -> str:
     if value >= 1_000_000:
         return f"${value / 1_000_000:.1f}M"
     return f"${value:,.0f}"
+
+
+def format_share_volume(value: float | int | None) -> str:
+    """Format share volume with M / B suffixes for compact metric display."""
+    if value is None or pd.isna(value):
+        return "—"
+    amount = float(value)
+    if amount >= 1_000_000_000:
+        return f"{amount / 1_000_000_000:.1f}B"
+    if amount >= 1_000_000:
+        return f"{amount / 1_000_000:.1f}M"
+    if amount >= 1_000:
+        return f"{amount / 1_000:.1f}K"
+    return f"{amount:,.0f}"
