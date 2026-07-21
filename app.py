@@ -235,24 +235,30 @@ def _render_ranked_table(
     value_column: str,
     value_label: str,
     value_format: str,
+    *,
+    show_value: bool = True,
 ) -> None:
     """Render a numbered top-10 table shared by Yahoo and StockTwits sections."""
     display = data.head(10).copy()
     display.insert(0, "rank", range(1, len(display) + 1))
     display["ticker_link"] = display["ticker"].map(_company_href)
+    columns = ["rank", "ticker_link", "company_name", "earnings_date"]
+    column_config: dict[str, object] = {
+        "ticker_link": st.column_config.LinkColumn(
+            "Ticker",
+            display_text=r"ticker=([A-Z0-9.\-]+)",
+        ),
+    }
+    if show_value:
+        columns.append(value_column)
+        column_config[value_column] = st.column_config.NumberColumn(
+            value_label, format=value_format
+        )
     st.dataframe(
-        display[
-            ["rank", "ticker_link", "company_name", "earnings_date", value_column]
-        ],
+        display[columns],
         use_container_width=True,
         hide_index=True,
-        column_config={
-            "ticker_link": st.column_config.LinkColumn(
-                "Ticker",
-                display_text=r"ticker=([A-Z0-9.\-]+)",
-            ),
-            value_column: st.column_config.NumberColumn(value_label, format=value_format),
-        },
+        column_config=column_config,
     )
 
 
@@ -453,9 +459,7 @@ def _render_earnings_spillover(spillover: list[dict[str, object]]) -> None:
 data = get_data()
 attention = data["attention"]
 earnings = data["earnings"]
-social_growth = data["social_growth"]
 most_mentioned = data["most_mentioned"]
-most_trending_yahoo = data["most_trending_yahoo"]
 yahoo_rank_growth = data["yahoo_rank_growth"]
 
 with st.sidebar:
@@ -549,18 +553,16 @@ st.subheader("Trending ahead of earnings")
 yahoo_col, stocktwits_col = st.columns(2)
 
 with yahoo_col:
-    st.markdown("**Most trending**")
-    if most_trending_yahoo.empty:
-        st.info(
-            "Yahoo trending ranks missing in the latest refresh — "
-            "coverage may be incomplete."
-        )
+    st.markdown("**Yahoo Finance**")
+    st.caption("Ranked by how many trending positions climbed over the last 7 days.")
+    if yahoo_rank_growth.empty:
+        st.info("No Yahoo rank climbers in the last 7 days yet.")
     else:
         _render_ranked_table(
-            most_trending_yahoo,
-            "current_yahoo_rank",
-            "Trend Rank",
-            "%.0f",
+            yahoo_rank_growth,
+            "yahoo_rank_change",
+            "Ranks Climbed (7D)",
+            "%+,.0f",
         )
 
 with stocktwits_col:
@@ -576,37 +578,7 @@ with stocktwits_col:
             "current_mentions",
             "Current Mentions",
             "%,.0f",
-        )
-
-st.divider()
-st.subheader("Highest increase in searches")
-
-yahoo_growth_col, stocktwits_growth_col = st.columns(2)
-
-with yahoo_growth_col:
-    st.markdown("**Yahoo Finance**")
-    st.caption("Ranked by how many trending positions climbed over the last 7 days.")
-    if yahoo_rank_growth.empty:
-        st.info("No Yahoo rank climbers in the last 7 days yet.")
-    else:
-        _render_ranked_table(
-            yahoo_rank_growth,
-            "yahoo_rank_change",
-            "Ranks Climbed (7D)",
-            "%+,.0f",
-        )
-
-with stocktwits_growth_col:
-    st.markdown("**StockTwits**")
-    st.caption("Ranked by StockTwits mention growth over the last 7 days.")
-    if social_growth.empty:
-        st.info("No StockTwits mention climbers in the last 7 days yet.")
-    else:
-        _render_ranked_table(
-            social_growth,
-            "social_change",
-            "Mentions Gained (7D)",
-            "%+,.0f",
+            show_value=False,
         )
 
 st.divider()
