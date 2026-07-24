@@ -1,9 +1,10 @@
-name: Daily Earnings Data Refresh
+name: Earnings Data Refresh
 
 on:
   schedule:
-    # 13:00 UTC; adjust this to the time you want the job to run.
-    - cron: "0 13 * * *"
+    # Every 3 hours (00:00, 03:00, 06:00, … UTC). GitHub may delay scheduled
+    # jobs by several minutes under load.
+    - cron: "0 */3 * * *"
   workflow_dispatch:
 
 permissions:
