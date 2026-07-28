@@ -98,15 +98,27 @@ st.markdown(
         }
     </style>
     <script>
+      // See app.py: navigate the Streamlit shell, not the inner /~/+/ iframe.
       document.addEventListener(
         "click",
         function (event) {
           const anchor = event.target && event.target.closest
-            ? event.target.closest('a[href*="Company"]')
+            ? event.target.closest('a[href*="/Company"]')
             : null;
           if (!anchor) return;
-          anchor.setAttribute("target", "_self");
-          anchor.removeAttribute("rel");
+          const href = anchor.getAttribute("href");
+          if (!href) return;
+          event.preventDefault();
+          event.stopPropagation();
+          try {
+            if (window.parent && window.parent !== window) {
+              window.parent.location.assign(href);
+            } else {
+              window.location.assign(href);
+            }
+          } catch (err) {
+            window.location.assign(href);
+          }
         },
         true
       );
@@ -235,8 +247,8 @@ if not peers:
     st.caption("No tracked same-sector peers with attention scores right now.")
 else:
     peer_bits = " · ".join(
-        f'<a class="peer-link" href="/Company?ticker={peer["ticker"]}" '
-        f'target="_self">{peer["ticker"]}</a>'
+        f'<a class="peer-link" href="/Company?ticker={peer["ticker"]}&embed=true" '
+        f'target="_parent">{peer["ticker"]}</a>'
         for peer in peers
     )
     st.markdown(peer_bits, unsafe_allow_html=True)

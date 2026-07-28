@@ -251,18 +251,29 @@ st.markdown(
         }
     </style>
     <script>
-      // Streamlit often forces target=_blank on links; keep Company research
-      // inside this frame so marketslite.com/app visitors don't jump to a
-      // bare .streamlit.app tab.
+      // Streamlit hosts the app in an inner /~/+/ iframe and intercepts
+      // normal <a> clicks. Navigate the Streamlit shell (parent) so Company
+      // pages load without leaving marketslite.com/app.
       document.addEventListener(
         "click",
         function (event) {
           const anchor = event.target && event.target.closest
-            ? event.target.closest('a[href*="Company"]')
+            ? event.target.closest('a[href*="/Company"]')
             : null;
           if (!anchor) return;
-          anchor.setAttribute("target", "_self");
-          anchor.removeAttribute("rel");
+          const href = anchor.getAttribute("href");
+          if (!href) return;
+          event.preventDefault();
+          event.stopPropagation();
+          try {
+            if (window.parent && window.parent !== window) {
+              window.parent.location.assign(href);
+            } else {
+              window.location.assign(href);
+            }
+          } catch (err) {
+            window.location.assign(href);
+          }
         },
         true
       );
@@ -279,8 +290,12 @@ def get_data() -> dict[str, pd.DataFrame]:
 
 
 def _company_href(ticker: str) -> str:
-    """Build an in-app Company page link for a ticker."""
-    return f"/Company?ticker={str(ticker).upper()}"
+    """Build an in-app Company page link for a ticker.
+
+    ``embed=true`` keeps Streamlit chrome hidden under marketslite.com/app.
+    Callers must use ``target="_parent"`` (see ``_company_anchor``).
+    """
+    return f"/Company?ticker={str(ticker).upper()}&embed=true"
 
 
 def _company_anchor(
@@ -290,12 +305,12 @@ def _company_anchor(
     css_class: str = "",
     title: str | None = None,
 ) -> str:
-    """HTML link that stays in the current frame (no new .streamlit.app tab)."""
+    """HTML link that navigates the Streamlit shell, not a nested iframe."""
     text = html.escape(label if label is not None else str(ticker).upper())
     class_attr = f' class="{html.escape(css_class)}"' if css_class else ""
     title_attr = f' title="{html.escape(title)}"' if title else ""
     return (
-        f'<a{class_attr} href="{html.escape(_company_href(ticker))}" target="_self"'
+        f'<a{class_attr} href="{html.escape(_company_href(ticker))}" target="_parent"'
         f'{title_attr}>{text}</a>'
     )
 
@@ -367,7 +382,7 @@ def _render_this_week(focus: list[dict[str, object]]) -> None:
             f'<div class="this-week-row">'
             f'<span class="this-week-date">{date_text}</span>'
             f'<a class="this-week-ticker" href="{_company_href(str(item["ticker"]))}" '
-            f'target="_self">{item["ticker"]}</a>'
+            f'target="_parent">{item["ticker"]}</a>'
             f'<span class="this-week-meta this-week-heat-{heat}">{headline}</span>'
             f'<span class="why-chip-inline">{chip_text}</span>'
             f"</div>"
@@ -394,7 +409,7 @@ def _render_weekly_postmortem(postmortem: dict[str, list[dict[str, object]]]) ->
             reaction = float(item["reaction_pct"])
             parts.append(
                 f'<div class="postmortem-row">'
-                f'<a href="{_company_href(str(item["ticker"]))}" target="_self">'
+                f'<a href="{_company_href(str(item["ticker"]))}" target="_parent">'
                 f'{item["ticker"]}</a>'
                 f'<span class="postmortem-{kind}">{reaction:+.1f}%</span>'
                 f"</div>"
@@ -465,7 +480,7 @@ def _render_earnings_calendar(calendar_data: dict[str, object]) -> None:
                     title = f"{title} · {item['attention_tier_label']}"
             ticker_parts.append(
                 f'<a class="{html.escape(css)}" href="{html.escape(_company_href(str(item["ticker"])))}" '
-                f'target="_self" title="{html.escape(title)}">{html.escape(label)}</a>'
+                f'target="_parent" title="{html.escape(title)}">{html.escape(label)}</a>'
             )
 
         cells.append(
@@ -519,7 +534,7 @@ def _render_earnings_spillover(spillover: list[dict[str, object]]) -> None:
         peers = item.get("peers") or []
         peer_text = (
             ", ".join(
-                f'<a href="{_company_href(str(peer["ticker"]))}" target="_self">'
+                f'<a href="{_company_href(str(peer["ticker"]))}" target="_parent">'
                 f'{peer["ticker"]}</a>'
                 for peer in peers
             )
@@ -529,7 +544,7 @@ def _render_earnings_spillover(spillover: list[dict[str, object]]) -> None:
         st.markdown(
             f'<div class="spillover-card">'
             f'<div class="spillover-title">'
-            f'<a href="{_company_href(str(item["ticker"]))}" target="_self">'
+            f'<a href="{_company_href(str(item["ticker"]))}" target="_parent">'
             f'{item["ticker"]}</a> '
             f'<span class="spillover-status-{status}">({status_label})</span>'
             f"{reaction_bit}</div>"
