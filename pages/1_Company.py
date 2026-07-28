@@ -142,7 +142,7 @@ def load_company(ticker: str) -> dict[str, object]:
 
 tickers = get_company_list()
 if not tickers:
-    st.page_link("app.py", label="← Back to home")
+    st.page_link("home.py", label="← Back to home")
     st.warning("No company data is available. Run `python scripts/refresh_data.py` first.")
     st.stop()
 
@@ -167,7 +167,7 @@ peers = company.get("peers") or []
 why_chips = company.get("why_chips") or ["Quiet this week"]
 headline = company.get("attention_headline") or "Background"
 
-st.page_link("app.py", label="← Back to home")
+st.page_link("home.py", label="← Back to home")
 
 if invalid_query:
     st.warning(
