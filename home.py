@@ -562,22 +562,10 @@ most_mentioned = data["most_mentioned"]
 yahoo_rank_growth = data["yahoo_rank_growth"]
 
 with st.sidebar:
-    st.markdown("## ◈ MarketsLite")
-    st.caption("Investor attention before earnings")
-    st.divider()
-    st.markdown("**Dashboard**")
-    st.caption("Click any ticker to open Company research.")
-    st.divider()
-    st.markdown("**Version 1 model**")
-    st.caption(
-        "40% StockTwits mentions · 25% Yahoo trend climb · "
-        "20% relative volume · 15% price momentum"
-    )
     if st.button("Reload database", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
-    st.divider()
     with st.expander("Admin: refresh data"):
         configured_token = get_setting("ADMIN_REFRESH_TOKEN")
         if not configured_token:
@@ -608,6 +596,10 @@ st.title("Most Watched Upcoming Earnings")
 st.caption(
     "Companies ranked based on investor search activity and mentions "
     "ahead of earnings reports"
+)
+st.caption(
+    "Attention mix: 40% StockTwits · 25% Yahoo trend · "
+    "20% relative volume · 15% price"
 )
 refresh_label = format_last_data_refresh(get_last_data_refresh_at())
 if refresh_label:

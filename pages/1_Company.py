@@ -146,13 +146,6 @@ if not tickers:
     st.warning("No company data is available. Run `python scripts/refresh_data.py` first.")
     st.stop()
 
-with st.sidebar:
-    st.markdown("## ◈ MarketsLite")
-    st.caption("Company research")
-    if st.button("Reload database", use_container_width=True):
-        st.cache_data.clear()
-        st.rerun()
-
 query_ticker = str(st.query_params.get("ticker", "")).upper().strip()
 invalid_query = bool(query_ticker) and query_ticker not in tickers
 default_index = tickers.index(query_ticker) if query_ticker in tickers else 0
