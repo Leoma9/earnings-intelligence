@@ -522,7 +522,7 @@ def _render_earnings_spillover(spillover: list[dict[str, object]]) -> None:
     st.markdown("**Who can move the tape**")
     st.caption(
         "Large names on this month’s calendar and same-sector peers that may "
-        "be lifted or dragged with them. Macro headlines coming later."
+        "be lifted or dragged with them."
     )
     for item in spillover:
         status = str(item.get("status") or "unknown")
@@ -606,11 +606,9 @@ if refresh_label:
     st.caption(refresh_label)
 
 if attention.empty:
-    st.warning(
-        "No dashboard data is available yet.\n\n"
-        "**Locally:** run `python scripts/refresh_data.py` from the project folder.\n\n"
-        "**On a deployed app:** open **Admin: refresh data** in the sidebar and "
-        "run a refresh with the admin token."
+    st.info(
+        "No dashboard data in this snapshot yet. "
+        "Check back after the next refresh, or run Admin → refresh data."
     )
     st.stop()
 
@@ -640,7 +638,7 @@ with yahoo_col:
         unsafe_allow_html=True,
     )
     if yahoo_rank_growth.empty:
-        st.info("No Yahoo rank climbers in the last 7 days yet.")
+        st.info("No Yahoo rank climbers in this snapshot yet.")
     else:
         _render_ranked_table(
             yahoo_rank_growth,
@@ -655,10 +653,7 @@ with stocktwits_col:
         unsafe_allow_html=True,
     )
     if most_mentioned.empty:
-        st.info(
-            "StockTwits mentions missing in the latest refresh — "
-            "coverage may be incomplete."
-        )
+        st.info("No StockTwits mention counts in this snapshot yet.")
     else:
         _render_ranked_table(
             most_mentioned,

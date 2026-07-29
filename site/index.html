@@ -157,7 +157,7 @@
           Tracking investor interest ahead of earnings so you can get ahead of
           the crowd
         </p>
-        <p class="refresh-note">
+        <p class="refresh-note" id="refresh-note">
           Dashboard data refreshes about every 3 hours.
           <a href="/about/" style="color: var(--accent); text-decoration: none"
             >How it works</a
@@ -179,5 +179,37 @@
         </p>
       </footer>
     </main>
+    <script>
+      fetch("/data-status.json", { cache: "no-store" })
+        .then(function (response) {
+          return response.ok ? response.json() : null;
+        })
+        .then(function (payload) {
+          if (!payload || !payload.refreshed_at || !payload.stamp_et) return;
+          var note = document.getElementById("refresh-note");
+          if (!note) return;
+          var refreshed = new Date(payload.refreshed_at);
+          if (isNaN(refreshed.getTime())) return;
+          var hoursAgo = Math.max(
+            0,
+            Math.floor((Date.now() - refreshed.getTime()) / 3600000)
+          );
+          var age =
+            hoursAgo <= 0
+              ? "less than 1 hour ago"
+              : hoursAgo === 1
+                ? "1 hour ago"
+                : hoursAgo + " hours ago";
+          note.textContent =
+            "Data last refreshed " + payload.stamp_et + " (" + age + ") · ";
+          var link = document.createElement("a");
+          link.href = "/about/";
+          link.textContent = "How it works";
+          link.style.color = "var(--accent)";
+          link.style.textDecoration = "none";
+          note.appendChild(link);
+        })
+        .catch(function () {});
+    </script>
   </body>
 </html>

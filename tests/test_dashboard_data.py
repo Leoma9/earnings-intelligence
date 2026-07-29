@@ -22,6 +22,8 @@ from src.dashboard.data import (
     get_last_data_refresh_at,
     load_dashboard_data,
     reaction_sentiment,
+    score_component_rows,
+    write_public_data_status,
 )
 
 
@@ -146,6 +148,35 @@ class DashboardDataTests(unittest.TestCase):
         )
         assert fresh is not None
         self.assertIn("(less than 1 hour ago)", fresh)
+
+    def test_write_public_data_status_and_score_components(self) -> None:
+        from datetime import datetime, timezone
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        import json
+
+        with TemporaryDirectory() as temp_dir:
+            status_path = Path(temp_dir) / "data-status.json"
+            written = write_public_data_status(
+                datetime(2026, 7, 14, 13, 0, tzinfo=timezone.utc),
+                path=status_path,
+            )
+            payload = json.loads(written.read_text())
+            self.assertIn("refreshed_at", payload)
+            self.assertIn("stamp_et", payload)
+            self.assertTrue(payload["stamp_et"])
+
+        rows = score_component_rows(
+            {
+                "social_points": 80.0,
+                "yahoo_points": 40.0,
+                "volume_points": None,
+                "price_points": 10.0,
+            }
+        )
+        self.assertEqual([row["label"] for row in rows], ["Mentions", "Yahoo", "Volume", "Price"])
+        self.assertEqual(rows[0]["points"], 80.0)
+        self.assertIsNone(rows[2]["points"])
 
     def test_build_anticipated_earnings_calendar_uses_reference_month(self) -> None:
         from pathlib import Path
