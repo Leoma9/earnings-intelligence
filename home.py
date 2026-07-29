@@ -681,3 +681,10 @@ else:
     spillover = build_earnings_spillover(month_calendar, attention)
     st.subheader("Earnings spillover watch")
     _render_earnings_spillover(spillover)
+
+st.divider()
+st.caption(
+    "MarketsLite is for informational purposes only and is not investment advice. "
+    "Attention and social interest are not fundamentals. "
+    "[How it works](https://marketslite.com/about/)"
+)

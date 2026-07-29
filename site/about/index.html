@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>About — MarketsLite</title>
+    <meta
+      name="description"
+      content="How MarketsLite works: data sources, attention scoring, and refresh cadence."
+    />
+    <link rel="canonical" href="https://marketslite.com/about/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://marketslite.com/about/" />
+    <meta property="og:title" content="About — MarketsLite" />
+    <meta
+      property="og:description"
+      content="How MarketsLite ranks investor attention ahead of earnings."
+    />
+    <meta property="og:image" content="https://marketslite.com/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="About — MarketsLite" />
+    <meta
+      name="twitter:description"
+      content="How MarketsLite ranks investor attention ahead of earnings."
+    />
+    <meta name="twitter:image" content="https://marketslite.com/og-image.png" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0b1120;
+        --text: #f3f7ff;
+        --muted: #9fb0cc;
+        --accent: #4f8cff;
+        --line: #23304d;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background:
+          radial-gradient(1200px 600px at 10% -10%, #1a2744 0%, transparent 55%),
+          radial-gradient(900px 500px at 100% 0%, #152033 0%, transparent 50%),
+          var(--bg);
+        color: var(--text);
+        font-family: "DM Sans", sans-serif;
+      }
+
+      .page {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 2.5rem 1.5rem 4rem;
+      }
+
+      .top-nav {
+        display: flex;
+        gap: 1.25rem;
+        align-items: center;
+        margin-bottom: 2.5rem;
+        font-size: 0.95rem;
+      }
+
+      .top-nav a {
+        color: var(--muted);
+        text-decoration: none;
+      }
+
+      .top-nav a:hover {
+        color: var(--text);
+      }
+
+      .brand-link {
+        font-family: "Instrument Serif", Georgia, serif;
+        font-size: 1.35rem;
+        color: var(--text) !important;
+        letter-spacing: -0.02em;
+      }
+
+      h1 {
+        font-family: "Instrument Serif", Georgia, serif;
+        font-size: clamp(2rem, 5vw, 2.75rem);
+        font-weight: 400;
+        margin: 0 0 0.75rem;
+        letter-spacing: -0.02em;
+      }
+
+      .lede {
+        color: var(--muted);
+        font-size: 1.05rem;
+        line-height: 1.55;
+        margin: 0 0 2.25rem;
+      }
+
+      h2 {
+        font-size: 1.05rem;
+        font-weight: 700;
+        margin: 2rem 0 0.65rem;
+      }
+
+      p,
+      li {
+        color: var(--muted);
+        line-height: 1.55;
+        margin: 0 0 0.85rem;
+      }
+
+      ul {
+        margin: 0 0 1rem;
+        padding-left: 1.2rem;
+      }
+
+      li {
+        margin-bottom: 0.4rem;
+      }
+
+      strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      a {
+        color: var(--accent);
+      }
+
+      .cta {
+        display: inline-block;
+        background: var(--accent);
+        color: #fff !important;
+        text-decoration: none;
+        font-weight: 700;
+        padding: 0.75rem 1.2rem;
+        border-radius: 10px;
+        margin: 0.5rem 0 1.5rem;
+      }
+
+      .cta:hover {
+        filter: brightness(1.08);
+      }
+
+      .site-footer {
+        margin-top: 3rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--line);
+        font-size: 0.85rem;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .site-footer nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 0.85rem;
+      }
+
+      .site-footer a {
+        color: var(--muted);
+        text-decoration: none;
+      }
+
+      .site-footer a:hover {
+        color: var(--text);
+      }
+
+      .disclaimer {
+        color: #7f8aa3;
+        font-size: 0.8rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <nav class="top-nav" aria-label="Primary">
+        <a class="brand-link" href="/">MarketsLite</a>
+        <a href="/app">Dashboard</a>
+        <a href="/about/">About</a>
+      </nav>
+
+      <h1>How MarketsLite works</h1>
+      <p class="lede">
+        MarketsLite ranks companies by investor attention before earnings —
+        not by predicting the print. Use it to see what the crowd is watching
+        this week.
+      </p>
+
+      <a class="cta" href="/app">Open dashboard</a>
+
+      <h2>What we track</h2>
+      <ul>
+        <li>
+          <strong>StockTwits mentions</strong> — how discussion volume is
+          changing for each ticker
+        </li>
+        <li>
+          <strong>Yahoo Finance trending</strong> — climbs on Yahoo’s search /
+          interest list
+        </li>
+        <li>
+          <strong>Relative trading volume</strong> — unusual activity vs each
+          name’s own baseline
+        </li>
+        <li>
+          <strong>Price momentum</strong> — recent percentage move into the
+          report
+        </li>
+      </ul>
+
+      <h2>How attention is scored</h2>
+      <p>
+        Each signal is scaled 0–100 within today’s upcoming-earnings batch,
+        then combined:
+      </p>
+      <ul>
+        <li>40% StockTwits mentions gained</li>
+        <li>25% Yahoo trend-rank climb</li>
+        <li>20% relative volume</li>
+        <li>15% price momentum</li>
+      </ul>
+      <p>
+        The dashboard shows relative tiers
+        (<strong>On the radar</strong>, <strong>Warming up</strong>,
+        <strong>Background</strong>) rather than raw scores as the primary
+        label — so ranking stays meaningful even when the whole batch is quiet
+        or loud.
+      </p>
+
+      <h2>How often data updates</h2>
+      <p>
+        The pipeline refreshes about every <strong>three hours</strong> and
+        writes a new snapshot to the live dashboard. The homepage shows when
+        the current snapshot was last written.
+      </p>
+
+      <h2>Calendar colors</h2>
+      <p>
+        Past dates use next-session price reaction after the report (bullish /
+        mixed / bearish). Upcoming dates use relative attention heat. That
+        reaction measure is an approximation and does not distinguish
+        before-the-open vs after-close timing.
+      </p>
+
+      <h2 id="contact">Contact</h2>
+      <p>
+        Questions or feedback:
+        <a href="mailto:Leoma4559@gmail.com">Leoma4559@gmail.com</a>
+      </p>
+
+      <footer class="site-footer">
+        <nav aria-label="Footer">
+          <a href="/">Home</a>
+          <a href="/app">Dashboard</a>
+          <a href="/about/">About</a>
+        </nav>
+        <p class="disclaimer">
+          MarketsLite is for informational purposes only and is not investment
+          advice. Attention and social interest are not fundamentals. Do your
+          own research.
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>

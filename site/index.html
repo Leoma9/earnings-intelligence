@@ -9,6 +9,24 @@
       name="description"
       content="MarketsLite ranks companies by investor attention before earnings — StockTwits, Yahoo trends, volume, and price — so you know what prints matter this week."
     />
+    <link rel="canonical" href="https://marketslite.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="MarketsLite" />
+    <meta property="og:url" content="https://marketslite.com/" />
+    <meta property="og:title" content="MarketsLite — Attention ahead of earnings" />
+    <meta
+      property="og:description"
+      content="See which companies are picking up investor attention before earnings this week."
+    />
+    <meta property="og:image" content="https://marketslite.com/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MarketsLite — Attention ahead of earnings" />
+    <meta
+      name="twitter:description"
+      content="See which companies are picking up investor attention before earnings this week."
+    />
+    <meta name="twitter:image" content="https://marketslite.com/og-image.png" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -21,6 +39,7 @@
         --text: #f3f7ff;
         --muted: #9fb0cc;
         --accent: #4f8cff;
+        --line: #23304d;
       }
 
       * {
@@ -42,7 +61,14 @@
       .page {
         max-width: 920px;
         margin: 0 auto;
-        padding: 4.5rem 1.5rem 4rem;
+        padding: 4.5rem 1.5rem 3rem;
+        min-height: calc(100vh - 6rem);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .hero {
+        flex: 1;
       }
 
       .brand {
@@ -66,6 +92,12 @@
         font-size: 1.05rem;
         line-height: 1.5;
         max-width: 36rem;
+        margin: 0 0 0.65rem;
+      }
+
+      .refresh-note {
+        color: #7f8aa3;
+        font-size: 0.9rem;
         margin: 0 0 1.75rem;
       }
 
@@ -82,16 +114,70 @@
       .cta:hover {
         filter: brightness(1.08);
       }
+
+      .site-footer {
+        margin-top: 3.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--line);
+        font-size: 0.85rem;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .site-footer nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 0.85rem;
+      }
+
+      .site-footer a {
+        color: var(--muted);
+        text-decoration: none;
+      }
+
+      .site-footer a:hover {
+        color: var(--text);
+      }
+
+      .disclaimer {
+        color: #7f8aa3;
+        font-size: 0.8rem;
+        max-width: 40rem;
+        margin: 0;
+      }
     </style>
   </head>
   <body>
     <main class="page">
-      <h1 class="brand">MarketsLite</h1>
-      <p class="headline">See what's picking up steam this week</p>
-      <p class="support">
-        Tracking investor interest ahead of earnings so you can get ahead of the crowd
-      </p>
-      <a class="cta" href="/app">Open dashboard</a>
+      <div class="hero">
+        <h1 class="brand">MarketsLite</h1>
+        <p class="headline">See what's picking up steam this week</p>
+        <p class="support">
+          Tracking investor interest ahead of earnings so you can get ahead of
+          the crowd
+        </p>
+        <p class="refresh-note">
+          Dashboard data refreshes about every 3 hours.
+          <a href="/about/" style="color: var(--accent); text-decoration: none"
+            >How it works</a
+          >
+        </p>
+        <a class="cta" href="/app">Open dashboard</a>
+      </div>
+
+      <footer class="site-footer">
+        <nav aria-label="Footer">
+          <a href="/app">Dashboard</a>
+          <a href="/about/">About</a>
+          <a href="/about/#contact">Contact</a>
+        </nav>
+        <p class="disclaimer">
+          MarketsLite is for informational purposes only and is not investment
+          advice. Attention and social interest are not fundamentals. Do your
+          own research.
+        </p>
+      </footer>
     </main>
   </body>
 </html>
