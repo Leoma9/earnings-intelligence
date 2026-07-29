@@ -13,6 +13,7 @@ from src.dashboard.data import (
     get_researchable_tickers,
     score_component_rows,
 )
+from src.dashboard.navigation import inject_company_link_nav
 
 
 def _chart_layout(y_title: str) -> dict:
@@ -130,35 +131,10 @@ st.markdown(
             .score-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
     </style>
-    <script>
-      // See app.py: navigate the Streamlit shell, not the inner /~/+/ iframe.
-      document.addEventListener(
-        "click",
-        function (event) {
-          const anchor = event.target && event.target.closest
-            ? event.target.closest('a[href*="/Company"]')
-            : null;
-          if (!anchor) return;
-          const href = anchor.getAttribute("href");
-          if (!href) return;
-          event.preventDefault();
-          event.stopPropagation();
-          try {
-            if (window.parent && window.parent !== window) {
-              window.parent.location.assign(href);
-            } else {
-              window.location.assign(href);
-            }
-          } catch (err) {
-            window.location.assign(href);
-          }
-        },
-        true
-      );
-    </script>
     """,
     unsafe_allow_html=True,
 )
+inject_company_link_nav()
 
 
 @st.cache_data(ttl=60)
