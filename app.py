@@ -9,5 +9,6 @@ companies = st.Page(
     title="Companies",
     url_path="Company",
 )
+about = st.Page("about.py", title="About", url_path="About")
 
-st.navigation([home, companies]).run()
+st.navigation([home, companies, about]).run()
