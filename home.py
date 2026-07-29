@@ -685,6 +685,6 @@ else:
 st.divider()
 st.caption(
     "MarketsLite is for informational purposes only and is not investment advice. "
-    "Attention and social interest are not fundamentals. "
-    "[How it works](https://marketslite.com/about/)"
+    "Attention and social interest are not fundamentals."
 )
+st.page_link("about.py", label="How it works →")
