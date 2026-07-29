@@ -19,6 +19,7 @@ from src.dashboard.data import (
     get_last_data_refresh_at,
     load_dashboard_data,
 )
+from src.dashboard.navigation import inject_company_link_nav
 from src.pipeline import run_refresh_pipeline
 
 
@@ -250,37 +251,10 @@ st.markdown(
             .postmortem-grid { grid-template-columns: 1fr; }
         }
     </style>
-    <script>
-      // Streamlit hosts the app in an inner /~/+/ iframe and intercepts
-      // normal <a> clicks. Navigate the Streamlit shell (parent) so Company
-      // pages load without leaving marketslite.com/app.
-      document.addEventListener(
-        "click",
-        function (event) {
-          const anchor = event.target && event.target.closest
-            ? event.target.closest('a[href*="/Company"]')
-            : null;
-          if (!anchor) return;
-          const href = anchor.getAttribute("href");
-          if (!href) return;
-          event.preventDefault();
-          event.stopPropagation();
-          try {
-            if (window.parent && window.parent !== window) {
-              window.parent.location.assign(href);
-            } else {
-              window.location.assign(href);
-            }
-          } catch (err) {
-            window.location.assign(href);
-          }
-        },
-        true
-      );
-    </script>
     """,
     unsafe_allow_html=True,
 )
+inject_company_link_nav()
 
 
 @st.cache_data(ttl=60)
