@@ -5,10 +5,13 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from src.dashboard.data import (
+    format_last_data_refresh,
     format_market_cap,
     format_share_volume,
     get_company_data,
+    get_last_data_refresh_at,
     get_researchable_tickers,
+    score_component_rows,
 )
 
 
@@ -96,6 +99,36 @@ st.markdown(
             line-height: 1.3;
             word-break: break-word;
         }
+        .score-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin: 0.35rem 0 0.85rem;
+        }
+        .score-cell {
+            background: #121c31;
+            border: 1px solid #23304d;
+            border-radius: 10px;
+            padding: 12px 10px;
+        }
+        .score-cell-label {
+            color: #9fb0cc;
+            font-size: 0.78rem;
+            margin-bottom: 4px;
+        }
+        .score-cell-value {
+            color: #f3f7ff;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+        .score-cell-detail {
+            color: #64748b;
+            font-size: 0.75rem;
+            margin-top: 2px;
+        }
+        @media (max-width: 720px) {
+            .score-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
     </style>
     <script>
       // See app.py: navigate the Streamlit shell, not the inner /~/+/ iframe.
@@ -143,7 +176,9 @@ def load_company(ticker: str) -> dict[str, object]:
 tickers = get_company_list()
 if not tickers:
     st.page_link("home.py", label="← Back to home")
-    st.warning("No company data is available. Run `python scripts/refresh_data.py` first.")
+    st.info(
+        "No companies in this snapshot yet. Check back after the next data refresh."
+    )
     st.stop()
 
 query_ticker = str(st.query_params.get("ticker", "")).upper().strip()
@@ -156,20 +191,25 @@ if st.query_params.get("ticker") != selected_ticker:
 company = load_company(selected_ticker)
 metrics = company["metrics"].copy()
 earnings = company["earnings"]
+score = company.get("score") or {}
 peers = company.get("peers") or []
 why_chips = company.get("why_chips") or ["Quiet this week"]
 headline = company.get("attention_headline") or "Background"
+components = score_component_rows(score)
 
 st.page_link("home.py", label="← Back to home")
 
 if invalid_query:
-    st.warning(
-        f"No data for **{query_ticker}**. Showing **{selected_ticker}** instead — "
-        "pick a ticker below."
+    st.info(
+        f"**{query_ticker}** isn’t in this snapshot. Showing **{selected_ticker}** — "
+        "pick another ticker below, or check back after the next refresh."
     )
 
 if metrics.empty:
-    st.warning(f"No historical metrics are available for {selected_ticker}.")
+    st.info(
+        f"No price history for **{selected_ticker}** yet — "
+        "it may be new to the watchlist."
+    )
     st.stop()
 
 metrics["date"] = pd.to_datetime(metrics["date"])
@@ -181,6 +221,9 @@ st.caption(
     f"{earnings.get('company_name', selected_ticker)}"
     + (f" · {earnings['sector']}" if earnings.get("sector") else "")
 )
+refresh_label = format_last_data_refresh(get_last_data_refresh_at())
+if refresh_label:
+    st.caption(refresh_label)
 
 summary, attention_col, earnings_col, volume_col = st.columns(4)
 summary.metric(
@@ -207,6 +250,26 @@ chip_html = "".join(
 )
 st.markdown(f'<div class="why-chips">{chip_html}</div>', unsafe_allow_html=True)
 
+st.markdown("**Attention mix (0–100 points)**")
+st.caption(
+    "Each signal is scaled inside today’s upcoming-earnings batch, then weighted."
+)
+if not any(item["points"] is not None for item in components):
+    st.info("No scored components for this ticker in the latest snapshot yet.")
+else:
+    cells = []
+    for item in components:
+        points = item["points"]
+        value = f"{points:.0f}" if points is not None else "—"
+        cells.append(
+            f'<div class="score-cell">'
+            f'<div class="score-cell-label">{item["label"]}</div>'
+            f'<div class="score-cell-value">{value}</div>'
+            f'<div class="score-cell-detail">{item["detail"]}</div>'
+            f"</div>"
+        )
+    st.markdown(f'<div class="score-grid">{"".join(cells)}</div>', unsafe_allow_html=True)
+
 st.divider()
 chart_col, detail_col = st.columns([1.6, 1])
 
@@ -231,13 +294,13 @@ with detail_col:
     st.metric("Est. EPS", _format_value(earnings.get("estimated_eps"), "$%.2f"))
     st.metric("Est. revenue", format_market_cap(earnings.get("estimated_revenue")))
     st.caption(
-        "Attention ranks names by StockTwits mentions, Yahoo trend climbs, "
-        "unusual volume, and price momentum ahead of earnings."
+        "Weights: 40% mentions · 25% Yahoo · 20% volume · 15% price. "
+        "See About for the full methodology."
     )
 
 st.subheader("Same-sector peers")
 if not peers:
-    st.caption("No tracked same-sector peers with attention scores right now.")
+    st.info("No same-sector peers with attention scores in this snapshot yet.")
 else:
     peer_bits = " · ".join(
         f'<a class="peer-link" href="/Company?ticker={peer["ticker"]}&embed=true" '
@@ -249,7 +312,7 @@ else:
 st.subheader("StockTwits mention history")
 mention_history = metrics.dropna(subset=["social_mentions"])
 if mention_history.empty:
-    st.info("StockTwits mention history is unavailable for this ticker.")
+    st.info("No StockTwits mention history for this ticker yet.")
 else:
     mentions = go.Figure(
         go.Scatter(

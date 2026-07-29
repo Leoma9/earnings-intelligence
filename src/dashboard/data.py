@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import calendar as calendar_module
+import json
 from datetime import date, datetime, timezone
 from pathlib import Path
 
 import pandas as pd
 
-from config.settings import DATABASE_FILE
+from config.settings import DATABASE_FILE, DATA_STATUS_FILE
 from src.storage.sqlite_store import SQLiteStore
 
 # Tickers not on Yahoo's trending list are treated as one slot below the
@@ -110,6 +111,80 @@ def format_last_data_refresh(
     else:
         age_label = f"{hours_ago} hours ago"
     return f"Data last refreshed {stamp} {zone_label} ({age_label})"
+
+
+def write_public_data_status(
+    moment: datetime | None = None,
+    path: Path | str = DATA_STATUS_FILE,
+) -> Path:
+    """Write a public JSON snapshot of the latest refresh for the landing page.
+
+    Stores an absolute Eastern-time stamp plus UTC ISO so the landing page can
+    compute a fresh “hours ago” label in the browser (committed relative ages
+    would go stale in Git).
+    """
+    stamp = moment or datetime.now(timezone.utc)
+    if stamp.tzinfo is None:
+        stamp = stamp.replace(tzinfo=timezone.utc)
+    try:
+        from zoneinfo import ZoneInfo
+
+        local = stamp.astimezone(ZoneInfo("America/New_York"))
+        zone_label = local.tzname() or "ET"
+    except Exception:
+        local = stamp.astimezone()
+        zone_label = local.tzname() or "local"
+    stamp_et = local.strftime("%b %d at %I:%M %p").replace(" 0", " ")
+    payload = {
+        "refreshed_at": stamp.astimezone(timezone.utc).isoformat(),
+        "stamp_et": f"{stamp_et} {zone_label}",
+        "label": format_last_data_refresh(stamp),
+    }
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return target
+
+
+def score_component_rows(score: dict[str, object] | None) -> list[dict[str, object]]:
+    """Return the four attention components for Company-page display."""
+    row = score or {}
+
+    def _points(key: str) -> float | None:
+        value = row.get(key)
+        if value is None or (isinstance(value, float) and pd.isna(value)):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    return [
+        {
+            "key": "mentions",
+            "label": "Mentions",
+            "detail": "StockTwits",
+            "points": _points("social_points"),
+        },
+        {
+            "key": "yahoo",
+            "label": "Yahoo",
+            "detail": "Trend climb",
+            "points": _points("yahoo_points"),
+        },
+        {
+            "key": "volume",
+            "label": "Volume",
+            "detail": "Relative",
+            "points": _points("volume_points"),
+        },
+        {
+            "key": "price",
+            "label": "Price",
+            "detail": "7d momentum",
+            "points": _points("price_points"),
+        },
+    ]
 
 
 def reaction_sentiment(reaction_pct: float | None) -> str:

@@ -7,6 +7,7 @@ DATA_DIR = PROJECT_ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"
 PROCESSED_DIR = DATA_DIR / "processed"
 DATABASE_FILE = DATA_DIR / "earnings_intelligence.db"
+DATA_STATUS_FILE = PROJECT_ROOT / "site" / "data-status.json"
 
 EARNINGS_LOOKAHEAD_DAYS = 30
 SOCIAL_LOOKBACK_DAYS = 90

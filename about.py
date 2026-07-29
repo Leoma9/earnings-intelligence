@@ -2,6 +2,8 @@
 
 import streamlit as st
 
+from src.dashboard.data import format_last_data_refresh, get_last_data_refresh_at
+
 st.set_page_config(
     page_title="About | MarketsLite",
     page_icon="◈",
@@ -14,6 +16,9 @@ st.caption(
     "Ranks companies by investor attention before earnings — "
     "not by predicting the print."
 )
+refresh_label = format_last_data_refresh(get_last_data_refresh_at())
+if refresh_label:
+    st.caption(refresh_label)
 
 st.subheader("What we track")
 st.markdown(
@@ -44,8 +49,8 @@ stays meaningful even when the whole batch is quiet or loud.
 st.subheader("How often data updates")
 st.markdown(
     "The pipeline refreshes about **every three hours** and writes a new "
-    "snapshot to the live dashboard. Home shows when the current snapshot "
-    "was last written."
+    "snapshot to the live dashboard. Home, Company pages, and the marketing "
+    "site show when the current snapshot was last written."
 )
 
 st.subheader("Calendar colors")

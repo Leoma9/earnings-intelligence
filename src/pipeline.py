@@ -118,4 +118,11 @@ def run_refresh_pipeline(database_path=DATABASE_FILE) -> PipelineResult:
         result.log(
             "Refresh failed: upcoming earnings exist but no scores were produced."
         )
+    else:
+        from datetime import datetime, timezone
+
+        from src.dashboard.data import write_public_data_status
+
+        status_path = write_public_data_status(datetime.now(timezone.utc))
+        result.log(f"Wrote public refresh stamp → {status_path}")
     return result
