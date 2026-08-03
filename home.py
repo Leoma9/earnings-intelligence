@@ -55,10 +55,10 @@ st.markdown(
             min-height: 1.5rem;
         }
         .earnings-cal-signal {
-            height: 3px;
+            height: 2px;
             border-radius: 999px;
-            margin: 1px 0 8px 0;
-            max-width: 3.2rem;
+            margin: -0.55rem 0 0.2rem 0;
+            max-width: 2.6rem;
         }
         .earnings-cal-signal.sent-bullish { background: #6ee7b7; }
         .earnings-cal-signal.sent-mixed { background: #fbbf24; }
@@ -71,6 +71,13 @@ st.markdown(
         .earnings-cal-signal.heat-mid { background: #93c5fd; }
         .earnings-cal-signal.heat-low,
         .earnings-cal-signal.heat-none { background: #475569; }
+        .earnings-cal-num {
+            color: #9fb0cc;
+            font-size: 0.72rem;
+            font-weight: 600;
+            margin: 0 0 0.15rem 0;
+        }
+        .earnings-cal-num.today { color: #93c5fd; }
         .earnings-cal-legend {
             color: #9fb0cc;
             font-size: 0.82rem;
@@ -82,6 +89,17 @@ st.markdown(
             color: #9fb0cc;
             font-size: 0.85rem;
             margin: 0.4rem 0 0.2rem 0;
+        }
+        .spillover-meta {
+            color: #9fb0cc;
+            font-size: 0.82rem;
+            line-height: 1.45;
+            margin: 0.05rem 0 0.25rem 0;
+        }
+        .spillover-peers-label {
+            color: #9fb0cc;
+            font-size: 0.78rem;
+            margin: 0.2rem 0 0.1rem 0;
         }
         .this-week-list { margin: 0.35rem 0 0.6rem 0; }
         .this-week-row {
@@ -180,31 +198,6 @@ st.markdown(
             line-height: 1.5;
             text-align: right;
         }
-        .spillover-card {
-            background: #121c31;
-            border: 1px solid #23304d;
-            border-radius: 10px;
-            padding: 12px 14px;
-            margin-bottom: 8px;
-        }
-        .spillover-title {
-            color: #f3f7ff;
-            font-weight: 700;
-            font-size: 0.95rem;
-        }
-        .spillover-title a {
-            color: inherit;
-            text-decoration: none;
-        }
-        .spillover-title a:hover { color: #93c5fd; }
-        .spillover-meta { color: #9fb0cc; font-size: 0.82rem; margin-top: 2px; }
-        .spillover-peers { color: #cbd5e1; font-size: 0.88rem; margin-top: 6px; }
-        .spillover-peers a {
-            color: #93c5fd;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        .spillover-peers a:hover { text-decoration: underline; }
         .spillover-status-bullish { color: #6ee7b7; }
         .spillover-status-bearish { color: #f87171; }
         .spillover-status-mixed { color: #fbbf24; }
@@ -216,11 +209,18 @@ st.markdown(
             color: #93c5fd !important;
             font-weight: 700 !important;
             font-size: 0.9rem !important;
-            line-height: 1.5 !important;
+            line-height: 1.35 !important;
             text-decoration: none !important;
         }
         [data-testid="stPageLink"] a:hover {
             text-decoration: underline !important;
+        }
+        /* Calendar / spillover: Streamlit widgets are padded — pull rows tighter */
+        [data-testid="stPageLink"] {
+            margin-bottom: -0.85rem !important;
+        }
+        [data-testid="stCaption"] {
+            margin-top: 0.1rem !important;
         }
         @media (max-width: 768px) {
             .earnings-cal-legend { display: none !important; }
@@ -384,6 +384,9 @@ def _render_earnings_calendar(calendar_data: dict[str, object]) -> None:
     days = calendar_data["days"]
     first_weekday = int(calendar_data["first_weekday"])
     days_in_month = int(calendar_data["days_in_month"])
+    # Keep cells readable with page_link widgets (they need more vertical room
+    # than the old HTML chip calendar).
+    tickers_per_day = min(CALENDAR_TICKERS_PER_DAY, 4)
 
     header = st.columns(7)
     for col, label in zip(header, ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")):
@@ -393,7 +396,7 @@ def _render_earnings_calendar(calendar_data: dict[str, object]) -> None:
     for _ in range(first_weekday):
         cells.append((None, []))
     for day in range(1, days_in_month + 1):
-        cells.append((day, list(days.get(day, [])[:CALENDAR_TICKERS_PER_DAY])))
+        cells.append((day, list(days.get(day, [])[:tickers_per_day])))
     while len(cells) % 7:
         cells.append((None, []))
 
@@ -403,17 +406,20 @@ def _render_earnings_calendar(calendar_data: dict[str, object]) -> None:
         for col, (day, tickers) in zip(cols, week):
             with col:
                 if day is None:
-                    st.write("")
+                    st.markdown('<div class="earnings-cal-num">&nbsp;</div>', unsafe_allow_html=True)
                     continue
                 day_date = date(
                     int(calendar_data["year"]), int(calendar_data["month"]), day
                 )
-                marker = " · today" if day_date == today else ""
-                st.caption(f"{day}{marker}")
+                today_class = " today" if day_date == today else ""
+                st.markdown(
+                    f'<div class="earnings-cal-num{today_class}">{day}</div>',
+                    unsafe_allow_html=True,
+                )
                 for item in tickers:
                     label = str(item["ticker"])
                     if item.get("momentum"):
-                        label = f"{label} {item['momentum']}"
+                        label = f"{label}{item['momentum']}"
                     _company_page_link(str(item["ticker"]), label=label)
                     if item.get("is_past"):
                         sentiment = str(item.get("sentiment") or "unknown")
@@ -457,35 +463,48 @@ def _render_earnings_spillover(spillover: list[dict[str, object]]) -> None:
         st.caption("No mega-cap influencers on this month’s calendar yet.")
         return
 
-    st.markdown("**Sector watch around big prints**")
     st.caption(
         "Large names on this month’s calendar and same-sector peers also on "
         "the radar — not measured co-movement."
     )
-    for item in spillover:
+    for index, item in enumerate(spillover):
+        if index:
+            st.markdown(
+                '<hr style="border:none;border-top:1px solid #23304d;'
+                'margin:0.55rem 0;" />',
+                unsafe_allow_html=True,
+            )
         status = str(item.get("status") or "unknown")
         status_label = status.replace("_", " ")
         reaction = item.get("reaction_pct")
         reaction_bit = (
             f" · {reaction:+.1f}% after report" if reaction is not None else ""
         )
-        peers = item.get("peers") or []
-        top, _ = st.columns([2, 3])
-        with top:
-            _company_page_link(str(item["ticker"]))
-        st.caption(
-            f"({status_label}){reaction_bit} · {item.get('company_name')} · "
-            f"{item.get('sector')} · {item.get('watch_note')}"
+        peers = list(item.get("peers") or [])
+
+        _company_page_link(str(item["ticker"]))
+        st.markdown(
+            f'<div class="spillover-meta">'
+            f'<span class="spillover-status-{html.escape(status)}">'
+            f"{html.escape(status_label)}</span>"
+            f"{html.escape(reaction_bit)} · "
+            f"{html.escape(str(item.get('company_name') or item['ticker']))} · "
+            f"{html.escape(str(item.get('sector') or '—'))} · "
+            f"{html.escape(str(item.get('watch_note') or ''))}"
+            f"</div>",
+            unsafe_allow_html=True,
         )
         if peers:
-            st.caption("Same-sector peers")
-            peer_cols = st.columns(min(len(peers), 5))
+            st.markdown(
+                '<div class="spillover-peers-label">Same-sector peers</div>',
+                unsafe_allow_html=True,
+            )
+            peer_cols = st.columns(len(peers))
             for col, peer in zip(peer_cols, peers):
                 with col:
                     _company_page_link(str(peer["ticker"]))
         else:
             st.caption("No tracked same-sector peers yet")
-
 
 data = get_data()
 attention = data["attention"]
