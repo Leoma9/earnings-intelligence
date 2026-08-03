@@ -180,11 +180,13 @@
       </footer>
     </main>
     <script>
-      fetch("/data-status.json", { cache: "no-store" })
-        .then(function (response) {
-          return response.ok ? response.json() : null;
-        })
-        .then(function (payload) {
+      (function () {
+        var statusUrls = [
+          "https://raw.githubusercontent.com/Leoma9/earnings-intelligence/main/site/data-status.json",
+          "/data-status.json",
+        ];
+
+        function renderStatus(payload) {
           if (!payload || !payload.refreshed_at || !payload.stamp_et) return;
           var note = document.getElementById("refresh-note");
           if (!note) return;
@@ -208,8 +210,22 @@
           link.style.color = "var(--accent)";
           link.style.textDecoration = "none";
           note.appendChild(link);
-        })
-        .catch(function () {});
+        }
+
+        function loadStatus(urls) {
+          if (!urls.length) return;
+          fetch(urls[0], { cache: "no-store" })
+            .then(function (response) {
+              return response.ok ? response.json() : Promise.reject();
+            })
+            .then(renderStatus)
+            .catch(function () {
+              loadStatus(urls.slice(1));
+            });
+        }
+
+        loadStatus(statusUrls);
+      })();
     </script>
   </body>
 </html>

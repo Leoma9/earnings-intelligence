@@ -18,7 +18,9 @@ st.caption(
 )
 refresh_label = format_last_data_refresh(get_last_data_refresh_at())
 if refresh_label:
-    st.caption(refresh_label)
+    st.caption(f"{refresh_label} · updates about every 3 hours")
+else:
+    st.caption("Snapshot age unavailable · updates about every 3 hours")
 
 st.subheader("What we track")
 st.markdown(
@@ -48,9 +50,11 @@ stays meaningful even when the whole batch is quiet or loud.
 
 st.subheader("How often data updates")
 st.markdown(
-    "The pipeline refreshes about **every three hours** and writes a new "
-    "snapshot to the live dashboard. Home, Company pages, and the marketing "
-    "site show when the current snapshot was last written."
+    "A background job refreshes the snapshot about **every three hours** and "
+    "publishes it to the live dashboard. There is no in-app refresh button — "
+    "Home, Company pages, and the marketing site show when the current "
+    "snapshot was last written. If the stamp looks stale, the next scheduled "
+    "run (or a manual **Run workflow** on GitHub Actions) publishes a new one."
 )
 
 st.subheader("Calendar colors")

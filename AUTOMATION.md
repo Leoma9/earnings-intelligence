@@ -113,6 +113,11 @@ uploading to persistent object storage or a hosted database instead — but for
 a single-writer personal project, a growing SQLite file in Git history is a
 reasonable, simple trade-off.
 
+**Manual refresh (you / admin):** GitHub → **Actions** → **Earnings Data
+Refresh** → **Run workflow**. There is no in-app refresh button on the
+dashboard; Streamlit Cloud’s disk is ephemeral and cannot publish lasting
+data.
+
 ## Keep Streamlit awake (optional)
 
 Free Streamlit Community Cloud apps **sleep when idle**. Visitors then see an
