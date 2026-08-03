@@ -30,16 +30,17 @@
       }
 
       /*
-        Overscan the iframe so Streamlit's embed shell (rounded corners +
-        thin chrome) is clipped by .frame-wrap. Extra height at the bottom
-        also hides the Built with Streamlit / Fullscreen watermark strip.
+        Slight overscan clips Streamlit's rounded embed chrome without eating
+        mobile side padding. Extra height at the bottom hides the Built with
+        Streamlit / Fullscreen strip; the app adds bottom padding so the last
+        controls stay above that clip.
       */
       iframe {
         position: absolute;
-        top: -14px;
-        left: -14px;
-        width: calc(100% + 28px);
-        height: calc(100% + 72px);
+        top: -6px;
+        left: -6px;
+        width: calc(100% + 12px);
+        height: calc(100% + 56px);
         border: 0;
         background: #0b1120;
       }

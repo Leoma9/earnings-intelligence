@@ -17,6 +17,7 @@ from src.dashboard.data import (
     get_last_data_refresh_at,
     load_dashboard_data,
 )
+from src.dashboard.navigation import inject_company_link_nav
 
 
 st.set_page_config(
@@ -53,6 +54,7 @@ st.markdown(
         }
         [data-testid="stMainBlockContainer"] {
             padding-top: 2rem;
+            padding-bottom: 5rem;
         }
         .stApp { background: #0b1120; }
         [data-testid="stMetric"] {
@@ -267,14 +269,22 @@ st.markdown(
             .mobile-cal-hint { display: block; }
             .postmortem-grid { grid-template-columns: 1fr; }
             [data-testid="stMainBlockContainer"] {
-                padding-left: 0.85rem !important;
-                padding-right: 0.85rem !important;
+                padding-left: 1.35rem !important;
+                padding-right: 1.35rem !important;
+                padding-bottom: 6rem !important;
+            }
+            .this-week-row,
+            .spillover-card,
+            .postmortem-row {
+                padding-left: 12px;
+                padding-right: 12px;
             }
         }
     </style>
     """,
     unsafe_allow_html=True,
 )
+inject_company_link_nav()
 
 
 @st.cache_data(ttl=60)
@@ -284,8 +294,8 @@ def get_data() -> dict[str, pd.DataFrame]:
 
 
 def _company_href(ticker: str) -> str:
-    """In-app Company deep link (stays inside the Streamlit frame)."""
-    return f"/Company?ticker={str(ticker).upper()}"
+    """In-app Company deep link for the Streamlit shell (keeps embed chrome)."""
+    return f"/Company?ticker={str(ticker).upper()}&embed=true"
 
 
 def _company_anchor(
@@ -295,7 +305,7 @@ def _company_anchor(
     css_class: str = "",
     title: str | None = None,
 ) -> str:
-    """Compact HTML ticker link used by the dense homepage layouts."""
+    """Compact HTML ticker link; clicks are handled by inject_company_link_nav."""
     text = html.escape(label if label is not None else str(ticker).upper())
     class_attr = f' class="{html.escape(css_class)}"' if css_class else ""
     title_attr = f' title="{html.escape(title)}"' if title else ""

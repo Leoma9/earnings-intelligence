@@ -30,6 +30,16 @@ st.markdown(
         .stApp > div {
             border-radius: 0 !important;
         }
+        [data-testid="stMainBlockContainer"] {
+            padding-bottom: 5rem;
+        }
+        @media (max-width: 768px) {
+            [data-testid="stMainBlockContainer"] {
+                padding-left: 1.35rem !important;
+                padding-right: 1.35rem !important;
+                padding-bottom: 6rem !important;
+            }
+        }
     </style>
     """,
     unsafe_allow_html=True,

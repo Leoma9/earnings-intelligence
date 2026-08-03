@@ -150,6 +150,14 @@ st.markdown(
         }
         @media (max-width: 720px) {
             .score-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            [data-testid="stMainBlockContainer"] {
+                padding-left: 1.35rem !important;
+                padding-right: 1.35rem !important;
+                padding-bottom: 6rem !important;
+            }
+        }
+        [data-testid="stMainBlockContainer"] {
+            padding-bottom: 5rem;
         }
         [data-testid="stPageLink"] a,
         [data-testid="stPageLink-NavLink"] {
