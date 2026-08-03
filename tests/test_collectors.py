@@ -159,6 +159,7 @@ class CollectorTests(unittest.TestCase):
                             "quotes": [
                                 {"symbol": "IBM"},
                                 {"symbol": "ETH-USD"},
+                                {"symbol": "BRK-B"},
                                 {"symbol": "AAPL"},
                             ]
                         }
@@ -168,14 +169,23 @@ class CollectorTests(unittest.TestCase):
         )
 
         result = yahoo_trending.fetch_yahoo_trend_ranks(
-            ["IBM", "AAPL", "MSFT"], metric_date="2026-07-14"
+            ["IBM", "AAPL", "MSFT", "BRK-B"], metric_date="2026-07-14"
         )
 
         self.assertEqual(list(result.columns), ["date", "ticker", "yahoo_trend_rank"])
         ranks = result.set_index("ticker")["yahoo_trend_rank"].to_dict()
         self.assertEqual(ranks["IBM"], 1)
-        self.assertEqual(ranks["AAPL"], 2)
+        self.assertEqual(ranks["BRK-B"], 2)
+        self.assertEqual(ranks["AAPL"], 3)
         self.assertTrue(pd.isna(ranks["MSFT"]))
+
+    def test_yahoo_looks_like_equity_allows_share_classes(self) -> None:
+        self.assertTrue(yahoo_trending._looks_like_equity("BRK-B"))
+        self.assertTrue(yahoo_trending._looks_like_equity("AAPL"))
+        self.assertFalse(yahoo_trending._looks_like_equity("BTC-USD"))
+        self.assertFalse(yahoo_trending._looks_like_equity("ETH-USD"))
+        self.assertFalse(yahoo_trending._looks_like_equity("^GSPC"))
+        self.assertFalse(yahoo_trending._looks_like_equity("EURUSD=X"))
 
     @patch("src.collectors.yahoo_trending.requests.get")
     def test_yahoo_trend_ranks_returns_empty_on_request_failure(

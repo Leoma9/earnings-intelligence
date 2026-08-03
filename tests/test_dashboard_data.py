@@ -625,7 +625,7 @@ class DashboardDataTests(unittest.TestCase):
                             "2026-06-01",
                             "2026-06-02",
                         ],
-                        "close": [100.0, 108.0, 100.0, 93.5, 100.0, 101.0, 100.0, 80.0],
+                        "close": [100.0, 108.0, 100.0, 93.5, 100.0, 100.0, 100.0, 80.0],
                         "volume": [1_000] * 8,
                     }
                 )
@@ -640,11 +640,11 @@ class DashboardDataTests(unittest.TestCase):
 
         self.assertEqual(
             [item["ticker"] for item in postmortem["beats"]],
-            ["BEAT", "FLAT"],
+            ["BEAT"],
         )
         self.assertEqual(
             [item["ticker"] for item in postmortem["misses"]],
-            ["MISS", "FLAT"],
+            ["MISS"],
         )
 
     def test_build_weekly_postmortem_includes_prior_month_prints(self) -> None:

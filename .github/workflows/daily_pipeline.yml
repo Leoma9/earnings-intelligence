@@ -7,6 +7,10 @@ on:
     - cron: "0 */3 * * *"
   workflow_dispatch:
 
+concurrency:
+  group: earnings-data-refresh
+  cancel-in-progress: false
+
 permissions:
   contents: write
 

@@ -54,7 +54,7 @@ def run_refresh_pipeline(database_path=DATABASE_FILE) -> PipelineResult:
     result.log(f"Candidate universe: {len(universe)} tickers.")
 
     result.log("Fetching upcoming earnings...")
-    earnings = fetch_upcoming_earnings(universe)
+    earnings = fetch_upcoming_earnings(universe, as_of=as_of)
     if not earnings.empty:
         tickers = earnings["ticker"].tolist()
         result.tickers_found = len(tickers)
@@ -62,7 +62,7 @@ def run_refresh_pipeline(database_path=DATABASE_FILE) -> PipelineResult:
         store.upsert_earnings(earnings)
 
         result.log("Fetching market data...")
-        market = fetch_market_data(tickers)
+        market = fetch_market_data(tickers, as_of=as_of)
         store.upsert_daily_metrics(market)
 
         result.log("Fetching StockTwits mention counts...")
@@ -74,7 +74,9 @@ def run_refresh_pipeline(database_path=DATABASE_FILE) -> PipelineResult:
             result.social_mentions_collected = True
 
         result.log("Fetching Yahoo Finance trending ranks...")
-        yahoo_ranks = fetch_yahoo_trend_ranks(tickers)
+        yahoo_ranks = fetch_yahoo_trend_ranks(
+            tickers, metric_date=as_of.isoformat()
+        )
         if yahoo_ranks.empty:
             result.log("Yahoo Finance returned no trending data (network or API issue).")
         else:

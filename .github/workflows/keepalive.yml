@@ -9,8 +9,9 @@ name: Keep Streamlit App Awake
 
 on:
   schedule:
-    # Every 10 minutes. GitHub can delay scheduled jobs slightly under load.
-    - cron: "*/10 * * * *"
+    # Every 30 minutes. Still best-effort vs Streamlit sleep; keeps Actions
+    # usage lower than a 10-minute cadence.
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 jobs:

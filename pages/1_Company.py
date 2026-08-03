@@ -1,5 +1,7 @@
 """Company research page for the Earnings Intelligence dashboard."""
 
+import html
+
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -13,7 +15,8 @@ from src.dashboard.data import (
     get_researchable_tickers,
     score_component_rows,
 )
-from src.dashboard.navigation import inject_company_link_nav
+
+_COMPANY_PAGE = "pages/1_Company.py"
 
 
 def _chart_layout(y_title: str) -> dict:
@@ -130,11 +133,19 @@ st.markdown(
         @media (max-width: 720px) {
             .score-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
+        [data-testid="stPageLink"] a,
+        [data-testid="stPageLink-NavLink"] {
+            color: #93c5fd !important;
+            font-weight: 700 !important;
+            text-decoration: none !important;
+        }
+        [data-testid="stPageLink"] a:hover {
+            text-decoration: underline !important;
+        }
     </style>
     """,
     unsafe_allow_html=True,
 )
-inject_company_link_nav()
 
 
 @st.cache_data(ttl=60)
@@ -208,7 +219,7 @@ summary.metric(
 attention_col.markdown(
     f'<div class="attention-card">'
     f'<div class="attention-card-label">Attention</div>'
-    f'<div class="attention-card-value">{headline}</div>'
+    f'<div class="attention-card-value">{html.escape(str(headline))}</div>'
     f"</div>",
     unsafe_allow_html=True,
 )
@@ -221,7 +232,8 @@ volume_col.metric(
 st.markdown("**Why it’s getting attention**")
 st.caption("What moved over the last 7 days — not the earnings outcome.")
 chip_html = "".join(
-    f'<span class="why-chip{" active" if chip != "Quiet this week" else ""}">{chip}</span>'
+    f'<span class="why-chip{" active" if chip != "Quiet this week" else ""}">'
+    f"{html.escape(str(chip))}</span>"
     for chip in why_chips
 )
 st.markdown(f'<div class="why-chips">{chip_html}</div>', unsafe_allow_html=True)
@@ -239,9 +251,9 @@ else:
         value = f"{points:.0f}" if points is not None else "—"
         cells.append(
             f'<div class="score-cell">'
-            f'<div class="score-cell-label">{item["label"]}</div>'
-            f'<div class="score-cell-value">{value}</div>'
-            f'<div class="score-cell-detail">{item["detail"]}</div>'
+            f'<div class="score-cell-label">{html.escape(str(item["label"]))}</div>'
+            f'<div class="score-cell-value">{html.escape(value)}</div>'
+            f'<div class="score-cell-detail">{html.escape(str(item["detail"]))}</div>'
             f"</div>"
         )
     st.markdown(f'<div class="score-grid">{"".join(cells)}</div>', unsafe_allow_html=True)
@@ -278,12 +290,14 @@ st.subheader("Same-sector peers")
 if not peers:
     st.info("No same-sector peers with attention scores in this snapshot yet.")
 else:
-    peer_bits = " · ".join(
-        f'<a class="peer-link" href="/Company?ticker={peer["ticker"]}&embed=true" '
-        f'target="_parent">{peer["ticker"]}</a>'
-        for peer in peers
-    )
-    st.markdown(peer_bits, unsafe_allow_html=True)
+    peer_cols = st.columns(min(len(peers), 5))
+    for col, peer in zip(peer_cols, peers):
+        with col:
+            st.page_link(
+                _COMPANY_PAGE,
+                label=str(peer["ticker"]),
+                query_params={"ticker": str(peer["ticker"]).upper()},
+            )
 
 st.subheader("StockTwits mention history")
 mention_history = metrics.dropna(subset=["social_mentions"])

@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 
 from config.settings import DATABASE_FILE, DATA_STATUS_FILE
-from src.storage.sqlite_store import SQLiteStore
+from src.storage.sqlite_store import SQLiteStore, market_today
 
 # Tickers not on Yahoo's trending list are treated as one slot below the
 # maximum list size when measuring how many ranks they climbed over 7 days.
@@ -346,7 +346,7 @@ def _pre_earnings_momentum(
         return None
     history["date"] = pd.to_datetime(history["date"]).dt.date
     history = history.dropna(subset=["close"]).sort_values("date")
-    cutoff = min(earnings_date, date.today())
+    cutoff = min(earnings_date, market_today())
     usable = history[history["date"] <= cutoff]
     if usable.empty:
         return None
@@ -374,15 +374,16 @@ def build_anticipated_earnings_calendar(
 ) -> dict[str, object]:
     """Build the current-month anticipated-earnings calendar payload.
 
-    ``reference_date`` defaults to today so the month rolls over automatically
-    when the calendar changes. Past days use post-earnings price reaction
-    sentiment; future days use attention heat and optional pre-report momentum.
+    ``reference_date`` defaults to the US/Eastern market date so the month
+    rolls over with the trading calendar. Past days use post-earnings price
+    reaction sentiment; future days use attention heat and optional
+    pre-report momentum.
 
     Day lists are returned in full. Pass ``tickers_per_day`` only when a caller
     wants display truncation; the homepage renderer truncates separately so
     spillover can still see every influencer.
     """
-    today = reference_date or date.today()
+    today = reference_date or market_today()
     store = SQLiteStore(database_path)
     events = store.get_earnings_in_month(today.year, today.month)
     metrics = store.get_all_daily_metrics()
@@ -620,7 +621,7 @@ def build_this_week_focus(
     framed = attention
     if "attention_tier" not in framed.columns:
         framed = annotate_attention_display(framed)
-    today = reference_date or date.today()
+    today = reference_date or market_today()
     end = date.fromordinal(today.toordinal() + days)
     frame = framed.copy()
     frame["earnings_date"] = pd.to_datetime(frame["earnings_date"]).dt.date
@@ -681,8 +682,11 @@ def build_weekly_postmortem(
     Queries a rolling date window from SQLite so prints near a month boundary
     (e.g. Jun 28 when today is Jul 3) are included even when the month calendar
     only shows the current month.
+
+    Beats require a positive next-session move; misses require a negative move.
+    Flat (0%) reactions are omitted from both lists.
     """
-    today = reference_date or date.today()
+    today = reference_date or market_today()
     start = date.fromordinal(today.toordinal() - days)
     store = SQLiteStore(database_path)
     events = store.get_earnings_between(start, today)
@@ -713,9 +717,14 @@ def build_weekly_postmortem(
             )
 
     beats = sorted(
-        items, key=lambda row: float(row["reaction_pct"]), reverse=True
+        (row for row in items if float(row["reaction_pct"]) > 0),
+        key=lambda row: float(row["reaction_pct"]),
+        reverse=True,
     )[:limit]
-    misses = sorted(items, key=lambda row: float(row["reaction_pct"]))[:limit]
+    misses = sorted(
+        (row for row in items if float(row["reaction_pct"]) < 0),
+        key=lambda row: float(row["reaction_pct"]),
+    )[:limit]
     return {"beats": beats, "misses": misses}
 
 
