@@ -14,7 +14,9 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-        html, body, [data-testid="stAppViewContainer"], .stApp {
+        :root, html, body, .stApp, [data-testid="stAppViewContainer"] {
+            --st-base-radius: 0 !important;
+            --st-button-radius: 0 !important;
             background-color: #0b1120 !important;
             border-radius: 0 !important;
         }
@@ -27,6 +29,16 @@ st.markdown(
         .stApp > header,
         .stApp > div {
             border-radius: 0 !important;
+        }
+        [data-testid="stMainBlockContainer"] {
+            padding-bottom: 5rem;
+        }
+        @media (max-width: 768px) {
+            [data-testid="stMainBlockContainer"] {
+                padding-left: 1.35rem !important;
+                padding-right: 1.35rem !important;
+                padding-bottom: 6rem !important;
+            }
         }
     </style>
     """,
