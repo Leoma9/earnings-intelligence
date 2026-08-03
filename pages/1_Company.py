@@ -53,11 +53,23 @@ st.markdown(
     <style>
         html, body, [data-testid="stAppViewContainer"], .stApp {
             background-color: #0b1120 !important;
+            border-radius: 0 !important;
         }
         [data-testid="stHeader"] { background: transparent; }
+        [data-testid="stMainBlockContainer"],
+        [data-testid="stMain"],
+        [data-testid="stSidebar"],
+        [data-testid="stSidebarContent"],
+        section.main,
+        .block-container,
+        .stAppViewContainer,
+        .stApp > header,
+        .stApp > div {
+            border-radius: 0 !important;
+        }
         .stApp { background: #0b1120; }
         [data-testid="stMetric"] {
-            background: #121c31; border: 1px solid #23304d; border-radius: 10px;
+            background: #121c31; border: 1px solid #23304d; border-radius: 0;
             padding: 14px;
             min-height: 108px;
         }
@@ -87,7 +99,7 @@ st.markdown(
         .attention-card {
             background: #121c31;
             border: 1px solid #23304d;
-            border-radius: 10px;
+            border-radius: 0;
             padding: 14px;
             min-height: 108px;
         }
@@ -112,7 +124,7 @@ st.markdown(
         .score-cell {
             background: #121c31;
             border: 1px solid #23304d;
-            border-radius: 10px;
+            border-radius: 0;
             padding: 12px 10px;
         }
         .score-cell-label {
