@@ -12,12 +12,11 @@ most searched on Yahoo). Tickers outside the top 100 are stored with a
 
 from __future__ import annotations
 
-from datetime import date
-
 import pandas as pd
 import requests
 
 from config.settings import TICKER_UNIVERSE_SIZE
+from src.storage.sqlite_store import market_today
 
 
 _TRENDING_URL = "https://query1.finance.yahoo.com/v1/finance/trending/US"
@@ -37,14 +36,14 @@ def fetch_yahoo_trend_ranks(
 
     Args:
         tickers: Symbols to score (normally the current earnings universe).
-        metric_date: ISO date for the snapshot (defaults to today, UTC-local).
+        metric_date: ISO date for the snapshot (defaults to US/Eastern market date).
 
     Returns:
         DataFrame with columns ``date``, ``ticker``, ``yahoo_trend_rank``.
         Rank is ``1`` for the #1 trending symbol on Yahoo Finance; ``NULL``
         when the ticker is not in the current top-100 trending list.
     """
-    snapshot_date = metric_date or date.today().isoformat()
+    snapshot_date = metric_date or market_today().isoformat()
     rank_by_ticker = _fetch_trending_equity_ranks()
     # API/network failure or an empty usable list → empty frame so the
     # pipeline skips the upsert and keeps yesterday's ranks instead of
@@ -97,9 +96,14 @@ def _fetch_trending_equity_ranks() -> dict[str, int] | None:
 
 
 def _looks_like_equity(symbol: str) -> bool:
-    """Filter out crypto pairs and other non-equity trending symbols."""
-    if "-" in symbol:
-        return False
+    """Filter out crypto pairs and other non-equity trending symbols.
+
+    Allows share-class tickers like ``BRK-B`` while rejecting pairs such as
+    ``BTC-USD`` / ``ETH-USD``.
+    """
     if symbol.endswith("=X") or symbol.startswith("^"):
         return False
+    if "-" in symbol:
+        base, _, suffix = symbol.partition("-")
+        return bool(base) and len(suffix) == 1 and suffix.isalpha()
     return True

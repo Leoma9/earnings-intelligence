@@ -55,10 +55,11 @@ st.markdown(
 
 st.subheader("Calendar colors")
 st.markdown(
-    "Past dates use next-session price reaction after the report "
-    "(bullish / mixed / bearish). Upcoming dates use relative attention heat. "
-    "That reaction measure is an approximation and does not distinguish "
-    "before-the-open vs after-close timing."
+    "Past dates show a colored reaction bar under each ticker "
+    "(bullish / mixed / bearish) from the next-session price move after the "
+    "report. Upcoming dates use attention-heat bars. That reaction measure is "
+    "an approximation and does not distinguish before-the-open vs after-close "
+    "timing."
 )
 
 st.subheader("Contact")

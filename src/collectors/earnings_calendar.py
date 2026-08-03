@@ -8,6 +8,7 @@ import pandas as pd
 import yfinance as yf
 
 from config.settings import EARNINGS_FILE, EARNINGS_LOOKAHEAD_DAYS
+from src.storage.sqlite_store import market_today
 
 
 CALENDAR_COLUMNS = [
@@ -67,14 +68,16 @@ def fetch_upcoming_earnings(
     tickers: list[str] | None = None,
     lookahead_days: int = EARNINGS_LOOKAHEAD_DAYS,
     provider: EarningsCalendarProvider | None = None,
+    as_of: date | None = None,
 ) -> pd.DataFrame:
     """
     Return companies reporting earnings within the specified lookahead window.
 
     Args:
         tickers: Symbols to check. Uses the starter watchlist when omitted.
-        lookahead_days: Number of calendar days to search from today.
+        lookahead_days: Number of calendar days to search from ``as_of``.
         provider: Earnings data source. Defaults to Yahoo Finance.
+        as_of: Anchor date for the window (defaults to US/Eastern market date).
 
     Returns:
         A DataFrame with ticker, company name, earnings date, estimated EPS,
@@ -85,7 +88,7 @@ def fetch_upcoming_earnings(
     if provider is None:
         provider = YahooFinanceEarningsProvider()
 
-    today = date.today()
+    today = as_of or market_today()
     cutoff = today + timedelta(days=lookahead_days)
     records: list[dict] = []
 
@@ -136,7 +139,7 @@ def _next_earnings_date(stock: yf.Ticker, info: dict) -> date | None:
         upcoming = [
             pd.Timestamp(value).date()
             for value in dates
-            if pd.Timestamp(value).date() >= date.today()
+            if pd.Timestamp(value).date() >= market_today()
         ]
         if upcoming:
             return min(upcoming)

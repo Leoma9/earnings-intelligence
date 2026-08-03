@@ -217,7 +217,8 @@ placeholder value) is tracked, so collaborators know which keys to set.
    Finance and StockTwits).
    Remember this in-app refresh does not persist past the next redeploy or
    sleep cycle (see "Important limitation" above) — for a lasting update,
-   refresh and push locally, or rely on the daily GitHub Actions workflow.
+   refresh and push locally, or rely on the GitHub Actions refresh workflow
+   (every 3 hours).
 
 Visit the **Company** page (sidebar) to confirm ticker charts render too.
 
@@ -236,9 +237,11 @@ git push
 Streamlit Community Cloud watches your `main` branch and redeploys
 automatically within about a minute of each push.
 
-**To refresh data after a reboot:** revisit the site, open **Admin: refresh
-data**, and click **Run full refresh now** again. There's no need to redeploy
-just to refresh data.
+**To refresh data after a reboot:** lasting updates come from the GitHub
+Actions refresh workflow (every 3 hours, or run it manually via
+**workflow_dispatch**). The in-app **Admin: refresh data** button can reload
+a session for a quick look, but those writes do not persist past the next
+Streamlit sleep or redeploy — do not rely on it alone.
 
 **To rename the app or change its subdomain:** use the app's **Settings** in
 the Streamlit Cloud dashboard.

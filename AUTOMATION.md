@@ -1,6 +1,6 @@
-# Daily Pipeline Automation
+# Pipeline Automation
 
-The daily pipeline performs this sequence:
+The refresh pipeline runs about every three hours and performs this sequence:
 
 1. Builds a ~100-ticker "most hyped" candidate list (StockTwits trending + Yahoo Finance most-actives)
 2. Updates the upcoming earnings calendar for those candidates
@@ -119,7 +119,7 @@ Free Streamlit Community Cloud apps **sleep when idle**. Visitors then see an
 “app is inactive” screen while it boots. Data refresh does **not** fix that.
 
 `.github/workflows/keepalive.yml` pings
-`https://marketslite.streamlit.app/?embed=true` about every 10 minutes so the
+`https://marketslite.streamlit.app/?embed=true` about every 30 minutes so the
 app stays warm. It does not change rankings or the database — it only sends an
 HTTP request.
 

@@ -6,18 +6,20 @@ import pandas as pd
 import yfinance as yf
 
 from config.settings import SOCIAL_LOOKBACK_DAYS
+from src.storage.sqlite_store import market_today
 
 
 def fetch_market_data(
     tickers: list[str],
     lookback_days: int = SOCIAL_LOOKBACK_DAYS,
+    as_of: date | None = None,
 ) -> pd.DataFrame:
     """
     Return daily market metrics for each ticker.
 
     Columns: date, ticker, close, volume, avg_volume_30d, price_change_pct
     """
-    start = date.today() - timedelta(days=lookback_days)
+    start = (as_of or market_today()) - timedelta(days=lookback_days)
     records: list[dict] = []
 
     for ticker in tickers:

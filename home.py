@@ -57,71 +57,23 @@ st.markdown(
             margin: 0 0 0.5rem 0;
             min-height: 1.5rem;
         }
-        .earnings-cal {
-            display: grid;
-            grid-template-columns: repeat(7, minmax(0, 1fr));
-            gap: 6px;
-            margin: 0.4rem 0 0.2rem 0;
+        .earnings-cal-signal {
+            height: 3px;
+            border-radius: 999px;
+            margin: 1px 0 8px 0;
+            max-width: 3.2rem;
         }
-        .earnings-cal-head {
-            color: #9fb0cc;
-            font-size: 0.75rem;
-            font-weight: 600;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-            text-align: center;
-            padding: 0.35rem 0;
+        .earnings-cal-signal.sent-bullish { background: #6ee7b7; }
+        .earnings-cal-signal.sent-mixed { background: #fbbf24; }
+        .earnings-cal-signal.sent-bearish { background: #f87171; }
+        .earnings-cal-signal.sent-unknown { background: #64748b; }
+        .earnings-cal-signal.heat-high {
+            background: #6ee7b7;
+            box-shadow: 0 0 8px rgba(110, 231, 183, 0.45);
         }
-        .earnings-cal-day {
-            min-height: 118px;
-            background: #121c31;
-            border: 1px solid #23304d;
-            border-radius: 10px;
-            padding: 6px 6px 8px 6px;
-        }
-        .earnings-cal-day.empty {
-            background: transparent;
-            border-color: transparent;
-        }
-        .earnings-cal-day.today {
-            border-color: #4f8cff;
-            box-shadow: inset 0 0 0 1px rgba(79, 140, 255, 0.35);
-        }
-        .earnings-cal-day.past {
-            opacity: 0.88;
-        }
-        .earnings-cal-num {
-            color: #9fb0cc;
-            font-size: 0.7rem;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        .earnings-cal-day.today .earnings-cal-num { color: #93c5fd; }
-        .earnings-cal-ticker {
-            display: block;
-            color: #f3f7ff;
-            font-size: 0.98rem;
-            font-weight: 700;
-            line-height: 1.25;
-            letter-spacing: 0.01em;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            text-decoration: none;
-        }
-        a.earnings-cal-ticker:hover { opacity: 0.85; }
-        .earnings-cal-ticker.sent-bullish { color: #6ee7b7; }
-        .earnings-cal-ticker.sent-mixed { color: #fbbf24; }
-        .earnings-cal-ticker.sent-bearish { color: #f87171; }
-        .earnings-cal-ticker.sent-unknown { color: #94a3b8; }
-        .earnings-cal-ticker.heat-high {
-            color: #e2e8f0;
-            text-shadow: 0 0 10px rgba(110, 231, 183, 0.35);
-            border-bottom: 2px solid rgba(110, 231, 183, 0.65);
-        }
-        .earnings-cal-ticker.heat-mid { color: #cbd5e1; }
-        .earnings-cal-ticker.heat-low,
-        .earnings-cal-ticker.heat-none { color: #94a3b8; font-weight: 600; }
+        .earnings-cal-signal.heat-mid { background: #93c5fd; }
+        .earnings-cal-signal.heat-low,
+        .earnings-cal-signal.heat-none { background: #475569; }
         .earnings-cal-legend {
             color: #9fb0cc;
             font-size: 0.82rem;
@@ -256,7 +208,6 @@ st.markdown(
             text-decoration: underline !important;
         }
         @media (max-width: 768px) {
-            .earnings-cal,
             .earnings-cal-legend { display: none !important; }
             .mobile-cal-hint { display: block; }
             .postmortem-grid { grid-template-columns: 1fr; }
@@ -393,7 +344,8 @@ def _render_weekly_postmortem(postmortem: dict[str, list[dict[str, object]]]) ->
                 unsafe_allow_html=True,
             )
     st.caption(
-        "Based on next-day price reaction after the report — not attention heat."
+        "Next-session price move after the report (approx.; BMO timing can "
+        "understate the gap) — not attention heat. Flat moves are omitted."
     )
 
 
@@ -434,11 +386,34 @@ def _render_earnings_calendar(calendar_data: dict[str, object]) -> None:
                     if item.get("momentum"):
                         label = f"{label} {item['momentum']}"
                     _company_page_link(str(item["ticker"]), label=label)
+                    if item.get("is_past"):
+                        sentiment = str(item.get("sentiment") or "unknown")
+                        reaction = item.get("reaction_pct")
+                        tip = (
+                            f"{float(reaction):+.1f}%"
+                            if reaction is not None
+                            else "n/a"
+                        )
+                        st.markdown(
+                            f'<div class="earnings-cal-signal '
+                            f'sent-{html.escape(sentiment)}" '
+                            f'title="{html.escape(tip)}"></div>',
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        heat = str(item.get("heat") or "none")
+                        st.markdown(
+                            f'<div class="earnings-cal-signal '
+                            f'heat-{html.escape(heat)}"></div>',
+                            unsafe_allow_html=True,
+                        )
 
     st.markdown(
         '<div class="earnings-cal-legend">'
-        "<b>Past days:</b> open a ticker to inspect post-report reaction. "
-        "<b>Upcoming:</b> ↑/↓ = pre-report price momentum (not the earnings outcome)."
+        "<b>Past days:</b> colored bar = next-session reaction "
+        "(green bullish / amber mixed / red bearish). "
+        "<b>Upcoming:</b> bar = attention heat; ↑/↓ = pre-report momentum "
+        "(not the earnings outcome)."
         "</div>"
         '<div class="mobile-cal-hint">'
         "Month calendar is easiest on desktop — use This week’s prints above."
@@ -453,10 +428,10 @@ def _render_earnings_spillover(spillover: list[dict[str, object]]) -> None:
         st.caption("No mega-cap influencers on this month’s calendar yet.")
         return
 
-    st.markdown("**Who can move the tape**")
+    st.markdown("**Sector watch around big prints**")
     st.caption(
-        "Large names on this month’s calendar and same-sector peers that may "
-        "be lifted or dragged with them."
+        "Large names on this month’s calendar and same-sector peers also on "
+        "the radar — not measured co-movement."
     )
     for item in spillover:
         status = str(item.get("status") or "unknown")
@@ -474,7 +449,7 @@ def _render_earnings_spillover(spillover: list[dict[str, object]]) -> None:
             f"{item.get('sector')} · {item.get('watch_note')}"
         )
         if peers:
-            st.caption("Blast radius")
+            st.caption("Same-sector peers")
             peer_cols = st.columns(min(len(peers), 5))
             for col, peer in zip(peer_cols, peers):
                 with col:
@@ -593,9 +568,9 @@ with stocktwits_col:
 st.divider()
 st.subheader("Most anticipated earnings this month")
 st.caption(
-    f"{month_calendar['month_label']} · past days colored by post-report price reaction · "
-    "upcoming days by relative attention (On the radar / Warming up) · "
-    "updates automatically each month"
+    f"{month_calendar['month_label']} · past days marked by post-report "
+    "reaction color · upcoming by attention heat "
+    "(On the radar / Warming up) · updates automatically each month"
 )
 if month_calendar["event_count"] == 0:
     st.info("No tracked earnings dates fall in this calendar month yet.")
