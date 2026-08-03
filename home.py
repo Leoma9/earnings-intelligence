@@ -575,10 +575,6 @@ st.caption(
     "Companies ranked based on investor search activity and mentions "
     "ahead of earnings reports"
 )
-st.caption(
-    "Attention mix: 40% StockTwits · 25% Yahoo trend · "
-    "20% relative volume · 15% price"
-)
 refresh_label = format_last_data_refresh(get_last_data_refresh_at())
 if refresh_label:
     st.caption(f"{refresh_label} · updates about every 3 hours")
