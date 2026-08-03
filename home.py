@@ -145,17 +145,18 @@ st.markdown(
             padding: 12px 14px;
         }
         .postmortem-heading {
+            color: #f3f7ff;
             font-weight: 700;
-            margin-bottom: 8px;
+            font-size: 1rem;
+            line-height: 1.5;
+            margin: 0 0 0.5rem 0;
         }
-        .postmortem-heading.beat { color: #6ee7b7; }
-        .postmortem-heading.miss { color: #f87171; }
         .postmortem-row {
             display: flex;
             justify-content: space-between;
             gap: 8px;
             padding: 4px 0;
-            font-size: 0.92rem;
+            font-size: 0.9rem;
         }
         .postmortem-row a {
             color: #f3f7ff;
@@ -163,24 +164,22 @@ st.markdown(
             text-decoration: none;
         }
         .postmortem-row a:hover { color: #93c5fd; }
-        .postmortem-beat {
-            color: #6ee7b7 !important;
-            font-weight: 700;
-            font-size: 1.02rem;
-        }
-        .postmortem-miss {
-            color: #f87171 !important;
-            font-weight: 700;
-            font-size: 1.02rem;
-        }
         .postmortem-ticker-beat,
         .postmortem-ticker-miss {
             font-weight: 700;
-            font-size: 1.02rem;
-            margin: 0 0 0.1rem 0;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin: 0;
         }
         .postmortem-ticker-beat { color: #6ee7b7; }
         .postmortem-ticker-miss { color: #f87171; }
+        .postmortem-move {
+            color: #9fb0cc;
+            font-size: 0.9rem;
+            font-weight: 600;
+            line-height: 1.5;
+            text-align: right;
+        }
         .spillover-card {
             background: #121c31;
             border: 1px solid #23304d;
@@ -211,11 +210,13 @@ st.markdown(
         .spillover-status-mixed { color: #fbbf24; }
         .spillover-status-upcoming { color: #93c5fd; }
         .spillover-status-unknown { color: #94a3b8; }
-        /* Native page_link tickers — keep the blue ticker look */
+        /* Native page_link tickers — match ranked/this-week weight and size */
         [data-testid="stPageLink"] a,
         [data-testid="stPageLink-NavLink"] {
             color: #93c5fd !important;
             font-weight: 700 !important;
+            font-size: 0.9rem !important;
+            line-height: 1.5 !important;
             text-decoration: none !important;
         }
         [data-testid="stPageLink"] a:hover {
@@ -327,7 +328,7 @@ def _render_weekly_postmortem(postmortem: dict[str, list[dict[str, object]]]) ->
     beat_col, miss_col = st.columns(2)
     with beat_col:
         st.markdown(
-            '<div class="postmortem-heading beat">Biggest beats</div>',
+            '<div class="postmortem-heading">Biggest beats</div>',
             unsafe_allow_html=True,
         )
         if not beats:
@@ -335,20 +336,22 @@ def _render_weekly_postmortem(postmortem: dict[str, list[dict[str, object]]]) ->
         for item in beats:
             reaction = float(item["reaction_pct"])
             ticker = str(item["ticker"])
-            name, move, link = st.columns([1.4, 1.0, 0.7])
-            name.markdown(
-                f'<div class="postmortem-ticker-beat">{html.escape(ticker)}</div>',
-                unsafe_allow_html=True,
-            )
+            name, move = st.columns([1.4, 1])
+            with name:
+                ticker_col, link_col = st.columns([3.2, 0.8])
+                ticker_col.markdown(
+                    f'<div class="postmortem-ticker-beat">{html.escape(ticker)}</div>',
+                    unsafe_allow_html=True,
+                )
+                with link_col:
+                    _company_page_link(ticker, label="→")
             move.markdown(
-                f'<div class="postmortem-beat">{reaction:+.1f}%</div>',
+                f'<div class="postmortem-move">{reaction:+.1f}%</div>',
                 unsafe_allow_html=True,
             )
-            with link:
-                _company_page_link(ticker, label="→")
     with miss_col:
         st.markdown(
-            '<div class="postmortem-heading miss">Biggest misses</div>',
+            '<div class="postmortem-heading">Biggest misses</div>',
             unsafe_allow_html=True,
         )
         if not misses:
@@ -356,17 +359,19 @@ def _render_weekly_postmortem(postmortem: dict[str, list[dict[str, object]]]) ->
         for item in misses:
             reaction = float(item["reaction_pct"])
             ticker = str(item["ticker"])
-            name, move, link = st.columns([1.4, 1.0, 0.7])
-            name.markdown(
-                f'<div class="postmortem-ticker-miss">{html.escape(ticker)}</div>',
-                unsafe_allow_html=True,
-            )
+            name, move = st.columns([1.4, 1])
+            with name:
+                ticker_col, link_col = st.columns([3.2, 0.8])
+                ticker_col.markdown(
+                    f'<div class="postmortem-ticker-miss">{html.escape(ticker)}</div>',
+                    unsafe_allow_html=True,
+                )
+                with link_col:
+                    _company_page_link(ticker, label="→")
             move.markdown(
-                f'<div class="postmortem-miss">{reaction:+.1f}%</div>',
+                f'<div class="postmortem-move">{reaction:+.1f}%</div>',
                 unsafe_allow_html=True,
             )
-            with link:
-                _company_page_link(ticker, label="→")
     st.caption(
         "Next-session move after the report (≥ +3% beat / ≤ −3% miss). "
         "Each ticker appears in only one column. BMO timing can understate the gap."
