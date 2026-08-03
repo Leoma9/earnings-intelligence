@@ -682,8 +682,10 @@ def build_weekly_postmortem(
     (e.g. Jun 28 when today is Jul 3) are included even when the month calendar
     only shows the current month.
 
-    Beats require a positive next-session move; misses require a negative move.
-    Flat (0%) reactions are omitted from both lists.
+    Beats require a bullish next-session move (≥ +3%); misses require a
+    bearish move (≤ −3%). Flat/mixed reactions are omitted. Each ticker
+    appears in at most one list (largest absolute reaction wins if a name
+    printed twice in the window).
     """
     today = reference_date or market_today()
     start = date.fromordinal(today.toordinal() - days)
@@ -691,7 +693,7 @@ def build_weekly_postmortem(
     events = store.get_earnings_between(start, today)
     metrics = store.get_all_daily_metrics()
 
-    items: list[dict[str, object]] = []
+    by_ticker: dict[str, dict[str, object]] = {}
     if not events.empty:
         framed = events.copy()
         framed["earnings_date"] = pd.to_datetime(framed["earnings_date"]).dt.date
@@ -703,25 +705,29 @@ def build_weekly_postmortem(
             reaction = _post_earnings_reaction_pct(metrics, ticker, event_date)
             if reaction is None:
                 continue
-            items.append(
-                {
-                    "ticker": ticker,
-                    "company_name": str(row.get("company_name") or ticker),
-                    "sector": str(row.get("sector") or "") or None,
-                    "earnings_date": event_date,
-                    "is_past": True,
-                    "reaction_pct": reaction,
-                    "sentiment": reaction_sentiment(reaction),
-                }
-            )
+            item = {
+                "ticker": ticker,
+                "company_name": str(row.get("company_name") or ticker),
+                "sector": str(row.get("sector") or "") or None,
+                "earnings_date": event_date,
+                "is_past": True,
+                "reaction_pct": reaction,
+                "sentiment": reaction_sentiment(reaction),
+            }
+            previous = by_ticker.get(ticker)
+            if previous is None or abs(float(reaction)) > abs(
+                float(previous["reaction_pct"])
+            ):
+                by_ticker[ticker] = item
 
+    items = list(by_ticker.values())
     beats = sorted(
-        (row for row in items if float(row["reaction_pct"]) > 0),
+        (row for row in items if row["sentiment"] == "bullish"),
         key=lambda row: float(row["reaction_pct"]),
         reverse=True,
     )[:limit]
     misses = sorted(
-        (row for row in items if float(row["reaction_pct"]) < 0),
+        (row for row in items if row["sentiment"] == "bearish"),
         key=lambda row: float(row["reaction_pct"]),
     )[:limit]
     return {"beats": beats, "misses": misses}

@@ -646,6 +646,77 @@ class DashboardDataTests(unittest.TestCase):
             [item["ticker"] for item in postmortem["misses"]],
             ["MISS"],
         )
+        beat_tickers = {item["ticker"] for item in postmortem["beats"]}
+        miss_tickers = {item["ticker"] for item in postmortem["misses"]}
+        self.assertFalse(beat_tickers & miss_tickers)
+
+    def test_build_weekly_postmortem_omits_mixed_and_never_overlaps(self) -> None:
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+
+        from src.storage.sqlite_store import SQLiteStore
+
+        with TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "dedupe.db"
+            store = SQLiteStore(db_path)
+            store.upsert_earnings(
+                pd.DataFrame(
+                    {
+                        "ticker": ["BEAT", "MISS", "MIXED"],
+                        "company_name": ["Beat Co", "Miss Co", "Mixed Co"],
+                        "sector": ["Technology"] * 3,
+                        "earnings_date": ["2026-07-10", "2026-07-11", "2026-07-12"],
+                        "estimated_eps": [1.0] * 3,
+                        "estimated_revenue": [10.0] * 3,
+                    }
+                )
+            )
+            store.upsert_daily_metrics(
+                pd.DataFrame(
+                    {
+                        "ticker": [
+                            "BEAT",
+                            "BEAT",
+                            "MISS",
+                            "MISS",
+                            "MIXED",
+                            "MIXED",
+                        ],
+                        "date": [
+                            "2026-07-10",
+                            "2026-07-11",
+                            "2026-07-11",
+                            "2026-07-12",
+                            "2026-07-12",
+                            "2026-07-13",
+                        ],
+                        # +8% bullish, −6.5% bearish, +1% mixed (excluded).
+                        "close": [100.0, 108.0, 100.0, 93.5, 100.0, 101.0],
+                        "volume": [1_000] * 6,
+                    }
+                )
+            )
+
+            postmortem = build_weekly_postmortem(
+                reference_date=date(2026, 7, 14),
+                days=7,
+                limit=5,
+                database_path=db_path,
+            )
+
+        self.assertEqual(
+            [item["ticker"] for item in postmortem["beats"]],
+            ["BEAT"],
+        )
+        self.assertEqual(
+            [item["ticker"] for item in postmortem["misses"]],
+            ["MISS"],
+        )
+        self.assertEqual(
+            {item["ticker"] for item in postmortem["beats"]}
+            & {item["ticker"] for item in postmortem["misses"]},
+            set(),
+        )
 
     def test_build_weekly_postmortem_includes_prior_month_prints(self) -> None:
         from pathlib import Path
