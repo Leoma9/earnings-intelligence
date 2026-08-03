@@ -31,14 +31,26 @@ st.markdown(
     <style>
         html, body, [data-testid="stAppViewContainer"], .stApp {
             background-color: #0b1120 !important;
+            border-radius: 0 !important;
         }
         [data-testid="stHeader"] { background: transparent; }
+        [data-testid="stMainBlockContainer"],
+        [data-testid="stMain"],
+        [data-testid="stSidebar"],
+        [data-testid="stSidebarContent"],
+        section.main,
+        .block-container,
+        .stAppViewContainer,
+        .stApp > header,
+        .stApp > div {
+            border-radius: 0 !important;
+        }
         [data-testid="stMainBlockContainer"] {
             padding-top: 2rem;
         }
         .stApp { background: #0b1120; }
         [data-testid="stMetric"] {
-            background: #121c31; border: 1px solid #23304d; border-radius: 10px;
+            background: #121c31; border: 1px solid #23304d; border-radius: 0;
             padding: 14px;
         }
         [data-testid="stMetricLabel"] { color: #9fb0cc; }
@@ -71,7 +83,7 @@ st.markdown(
             min-height: 118px;
             background: #121c31;
             border: 1px solid #23304d;
-            border-radius: 10px;
+            border-radius: 0;
             padding: 6px 6px 8px 6px;
         }
         .earnings-cal-day.empty {
@@ -187,7 +199,7 @@ st.markdown(
         .postmortem-col {
             background: #121c31;
             border: 1px solid #23304d;
-            border-radius: 10px;
+            border-radius: 0;
             padding: 12px 14px;
         }
         .postmortem-heading {
@@ -216,7 +228,7 @@ st.markdown(
         .spillover-card {
             background: #121c31;
             border: 1px solid #23304d;
-            border-radius: 10px;
+            border-radius: 0;
             padding: 12px 14px;
             margin-bottom: 8px;
         }

@@ -11,6 +11,28 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+st.markdown(
+    """
+    <style>
+        html, body, [data-testid="stAppViewContainer"], .stApp {
+            background-color: #0b1120 !important;
+            border-radius: 0 !important;
+        }
+        [data-testid="stMainBlockContainer"],
+        [data-testid="stMain"],
+        [data-testid="stSidebar"],
+        [data-testid="stSidebarContent"],
+        section.main,
+        .block-container,
+        .stApp > header,
+        .stApp > div {
+            border-radius: 0 !important;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 st.title("How MarketsLite works")
 st.caption(
     "Ranks companies by investor attention before earnings — "
