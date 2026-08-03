@@ -29,7 +29,9 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-        html, body, [data-testid="stAppViewContainer"], .stApp {
+        :root, html, body, .stApp, [data-testid="stAppViewContainer"] {
+            --st-base-radius: 0 !important;
+            --st-button-radius: 0 !important;
             background-color: #0b1120 !important;
             border-radius: 0 !important;
         }
@@ -42,7 +44,11 @@ st.markdown(
         .block-container,
         .stAppViewContainer,
         .stApp > header,
-        .stApp > div {
+        .stApp > div,
+        [data-testid="stMetric"],
+        [data-testid="stMetric"] > div,
+        [data-testid="stVerticalBlockBorderWrapper"],
+        [data-testid="stVerticalBlockBorderWrapper"] > div {
             border-radius: 0 !important;
         }
         [data-testid="stMainBlockContainer"] {
