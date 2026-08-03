@@ -62,9 +62,8 @@ def get_last_data_refresh_at(
 ) -> datetime | None:
     """Return when the SQLite database was last written (UTC).
 
-    The daily GitHub Actions job and in-app/admin refreshes both rewrite
-    ``earnings_intelligence.db``, so the file mtime is a reliable
-    last-refreshed signal for the homepage.
+    The daily GitHub Actions job rewrites ``earnings_intelligence.db``, so the
+    file mtime is a reliable last-refreshed signal for the homepage.
     """
     path = Path(database_path)
     if not path.exists():

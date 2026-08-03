@@ -26,23 +26,20 @@ the app:
 To work around this, `data/earnings_intelligence.db` is **committed to Git on
 purpose** (it is not in `.gitignore`). Every fresh deploy or reboot starts
 from whatever snapshot of the database was last pushed to GitHub — not an
-empty one. Keeping the data fresh is then just a matter of refreshing your
-*local* database and pushing it, in one of two ways:
+empty one. Keeping the data fresh is then just a matter of refreshing that
+committed snapshot, in one of two ways:
 
-1. **Automatically** — the included GitHub Actions workflow
-   (`.github/workflows/daily_pipeline.yml`) runs the pipeline on a daily
-   schedule and commits the refreshed database back to `main` for you. Once
-   this is pushed and enabled, Streamlit Cloud picks up each automated commit
-   and redeploys with fresh data — no manual steps needed. See `AUTOMATION.md`.
+1. **Automatically (recommended)** — the included GitHub Actions workflow
+   (`.github/workflows/daily_pipeline.yml`) runs about every 3 hours and
+   commits the refreshed database (+ `site/data-status.json`) back to `main`.
+   Streamlit Cloud picks up each automated commit and redeploys with fresh
+   data. See `AUTOMATION.md`. Trigger a one-off run anytime with
+   **Actions → Earnings Data Refresh → Run workflow**.
 2. **Manually** — run `python scripts/refresh_data.py` locally, then
-   `git add data/earnings_intelligence.db && git commit -m "Refresh data" && git push`.
+   `git add data/earnings_intelligence.db site/data-status.json && git commit -m "Refresh data" && git push`.
 
-There's also an **in-app admin refresh** panel (sidebar → "Admin: refresh
-data", protected by a secret token) that reruns the pipeline directly on the
-live site. It's convenient for an instant spot-refresh, but its result lives
-only on that instance's temporary disk — it does **not** get committed to
-Git, so it will be lost on the next redeploy or sleep cycle. For data that
-survives long-term, prefer option 1 or 2 above.
+Do **not** rely on refreshing inside the Streamlit Cloud container: that disk
+is ephemeral and never gets committed back to Git.
 
 A future upgrade path (not needed for V1) is swapping SQLite for a hosted
 database such as Postgres, which would survive reboots automatically without
@@ -162,15 +159,9 @@ This is a free tier — no credit card required.
      Python version must be selected here, in the deploy dialog. If you skip
      this, it may default to a newer Python version that some pinned
      packages in `requirements.txt` don't yet have prebuilt wheels for.)
-   - **Secrets:** paste the following. Replace the admin token value with
-     your own long random string (this is your admin password for the
-     in-app refresh control — see Step 7). No other credentials are
-     needed — the social-mentions signal uses StockTwits' free, public,
-     unauthenticated API:
-
-     ```toml
-     ADMIN_REFRESH_TOKEN = "choose-a-long-random-string-here"
-     ```
+   - **Secrets:** leave empty for now (no API keys required). The
+     social-mentions signal uses StockTwits' free, public, unauthenticated
+     API.
 
 5. Click **Deploy**.
 
@@ -184,12 +175,8 @@ the build log shown on screen.
 
 Streamlit Community Cloud has no traditional "environment variables" panel —
 secrets serve that role. They're written in TOML format and exposed to your
-app as `st.secrets`. This project's `config/secrets.py` reads them (falling
-back to real OS environment variables for local scripts):
-
-```toml
-ADMIN_REFRESH_TOKEN = "choose-a-long-random-string-here"
-```
+app as `st.secrets`. This project does **not** require any secrets for the
+public dashboard today (`config/secrets.py` is ready if you add keys later).
 
 To view or change secrets after deployment:
 
@@ -198,8 +185,7 @@ To view or change secrets after deployment:
 3. Edit the TOML, then click **Save**. The app automatically restarts.
 
 **Never commit real secrets to GitHub.** `.streamlit/secrets.toml` is already
-listed in `.gitignore`. Only `.streamlit/secrets.toml.example` (with a
-placeholder value) is tracked, so collaborators know which keys to set.
+listed in `.gitignore`.
 
 ---
 
@@ -211,16 +197,12 @@ placeholder value) is tracked, so collaborators know which keys to set.
    you should see it load with whatever rankings were present the last time
    the database was refreshed and pushed — no manual step needed on a fresh
    deploy.
-3. If you want fresher numbers right now, open **Admin: refresh data** in the
-   sidebar, enter your token, and click **Run full refresh now** (~1–2
-   minutes — it's fetching live data for ~100 candidate tickers from Yahoo
-   Finance and StockTwits).
-   Remember this in-app refresh does not persist past the next redeploy or
-   sleep cycle (see "Important limitation" above) — for a lasting update,
-   refresh and push locally, or rely on the GitHub Actions refresh workflow
-   (every 3 hours).
+3. Confirm the homepage shows a **Data last refreshed …** stamp. To force a
+   fresher snapshot immediately, run **Actions → Earnings Data Refresh →
+   Run workflow** on GitHub, wait for the commit, and let Streamlit redeploy
+   (~1–2 minutes for the pipeline, plus about a minute for Cloud).
 
-Visit the **Company** page (sidebar) to confirm ticker charts render too.
+Visit the **Companies** page (sidebar) to confirm ticker charts render too.
 
 ---
 
@@ -237,11 +219,10 @@ git push
 Streamlit Community Cloud watches your `main` branch and redeploys
 automatically within about a minute of each push.
 
-**To refresh data after a reboot:** lasting updates come from the GitHub
-Actions refresh workflow (every 3 hours, or run it manually via
-**workflow_dispatch**). The in-app **Admin: refresh data** button can reload
-a session for a quick look, but those writes do not persist past the next
-Streamlit sleep or redeploy — do not rely on it alone.
+**To refresh data:** rely on the GitHub Actions workflow (every 3 hours), or
+run it manually via **workflow_dispatch**. After a successful run, `main`
+should gain an `Automated data refresh …` commit and Streamlit Cloud should
+redeploy on its own.
 
 **To rename the app or change its subdomain:** use the app's **Settings** in
 the Streamlit Cloud dashboard.
@@ -275,6 +256,6 @@ tier only provides the `*.streamlit.app` subdomain.
 |---|---|---|
 | Build fails installing a package | Python version mismatch | Redeploy with a different Python version in Advanced settings (Community Cloud ignores `runtime.txt`) |
 | "No dashboard data is available" on a fresh deploy | `data/earnings_intelligence.db` wasn't committed, or was emptied locally before pushing | Run `python scripts/refresh_data.py` locally, then commit and push the database file |
-| Admin refresh button says "Incorrect admin token" | Secret not saved, or typo | Re-check **Settings → Secrets** on Streamlit Cloud matches what you typed |
+| Data stamp looks days old | Scheduled Action failed to commit, Streamlit hasn’t redeployed yet, or you’re looking at a stale Cloudflare copy of `site/` | Check **Actions → Earnings Data Refresh** for green runs + an `Automated data refresh` commit on `main`; landing freshness reads GitHub’s `data-status.json` first |
 | Push to GitHub asks for a password and rejects it | GitHub no longer accepts account passwords over plain Git | Use a Personal Access Token, or `gh auth login` |
 | App stuck "Oh no, error running app" | Check the **Manage app** logs in the bottom-right of the site for the Python traceback | Fix locally, then `git push` again |

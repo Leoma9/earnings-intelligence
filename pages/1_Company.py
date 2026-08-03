@@ -210,7 +210,9 @@ st.caption(
 )
 refresh_label = format_last_data_refresh(get_last_data_refresh_at())
 if refresh_label:
-    st.caption(refresh_label)
+    st.caption(f"{refresh_label} · updates about every 3 hours")
+else:
+    st.caption("Snapshot age unavailable · updates about every 3 hours")
 
 summary, attention_col, earnings_col, volume_col = st.columns(4)
 summary.metric(

@@ -1,7 +1,6 @@
-"""The core data-refresh pipeline, reusable from a CLI, scheduler, or app.
+"""The core data-refresh pipeline, reusable from a CLI or scheduler.
 
-Both ``scripts/refresh_data.py`` (command line / cron / GitHub Actions) and
-the Streamlit app's admin-gated "Refresh data now" button call
+``scripts/refresh_data.py`` (command line / cron / GitHub Actions) calls
 ``run_refresh_pipeline`` so there is exactly one implementation to keep in
 sync with the storage schema and scoring model.
 """

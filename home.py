@@ -1,13 +1,11 @@
 """Earnings Intelligence Platform — Streamlit homepage."""
 
-import hmac
 import html
 from datetime import date
 
 import pandas as pd
 import streamlit as st
 
-from config.secrets import get_setting
 from src.dashboard.data import (
     CALENDAR_TICKERS_PER_DAY,
     attention_tier_label,
@@ -19,7 +17,6 @@ from src.dashboard.data import (
     get_last_data_refresh_at,
     load_dashboard_data,
 )
-from src.pipeline import run_refresh_pipeline
 
 _COMPANY_PAGE = "pages/1_Company.py"
 
@@ -464,37 +461,6 @@ earnings = data["earnings"]
 most_mentioned = data["most_mentioned"]
 yahoo_rank_growth = data["yahoo_rank_growth"]
 
-with st.sidebar:
-    if st.button("Reload database", use_container_width=True):
-        st.cache_data.clear()
-        st.rerun()
-
-    with st.expander("Admin: refresh data"):
-        configured_token = get_setting("ADMIN_REFRESH_TOKEN")
-        if not configured_token:
-            st.caption(
-                "Set ADMIN_REFRESH_TOKEN in `.streamlit/secrets.toml` "
-                "(or app Secrets on Streamlit Cloud) to enable this."
-            )
-        else:
-            entered_token = st.text_input("Admin token", type="password")
-            if st.button("Run full refresh now", use_container_width=True):
-                if entered_token and hmac.compare_digest(
-                    str(entered_token), str(configured_token)
-                ):
-                    with st.spinner(
-                        "Collecting earnings, prices, StockTwits mentions, "
-                        "and Yahoo trending ranks..."
-                    ):
-                        result = run_refresh_pipeline()
-                    for message in result.messages:
-                        st.write(f"- {message}")
-                    st.success("Refresh complete.")
-                    st.cache_data.clear()
-                    st.rerun()
-                else:
-                    st.error("Incorrect admin token.")
-
 st.title("Most Watched Upcoming Earnings")
 st.caption(
     "Companies ranked based on investor search activity and mentions "
@@ -506,12 +472,14 @@ st.caption(
 )
 refresh_label = format_last_data_refresh(get_last_data_refresh_at())
 if refresh_label:
-    st.caption(refresh_label)
+    st.caption(f"{refresh_label} · updates about every 3 hours")
+else:
+    st.caption("Snapshot age unavailable · updates about every 3 hours")
 
 if attention.empty:
     st.info(
         "No dashboard data in this snapshot yet. "
-        "Check back after the next refresh, or run Admin → refresh data."
+        "Check back after the next automatic refresh."
     )
     st.stop()
 

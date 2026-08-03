@@ -1,7 +1,7 @@
 """CLI entry point for the data-refresh pipeline.
 
-The actual pipeline logic lives in ``src/pipeline.py`` so the Streamlit app
-can trigger the same refresh from an admin-gated button without shelling out.
+The actual pipeline logic lives in ``src/pipeline.py`` so GitHub Actions and
+local scripts share one implementation.
 """
 
 import sys
