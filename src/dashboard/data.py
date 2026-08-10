@@ -59,12 +59,28 @@ _HEAT_SORT = {"high": 0, "mid": 1, "low": 2, "none": 3}
 
 def get_last_data_refresh_at(
     database_path: Path | str = DATABASE_FILE,
+    status_path: Path | str = DATA_STATUS_FILE,
 ) -> datetime | None:
-    """Return when the SQLite database was last written (UTC).
+    """Return when data was last refreshed (UTC).
 
-    The daily GitHub Actions job rewrites ``earnings_intelligence.db``, so the
-    file mtime is a reliable last-refreshed signal for the homepage.
+    Prefers ``site/data-status.json`` (written by the refresh pipeline and shown
+    on marketslite.com) so the marketing site and the Streamlit homepage share
+    one stamp. Falls back to the SQLite file mtime when the status file is
+    missing.
     """
+    status = Path(status_path)
+    if status.exists():
+        try:
+            payload = json.loads(status.read_text(encoding="utf-8"))
+            raw = payload.get("refreshed_at")
+            if raw:
+                moment = datetime.fromisoformat(str(raw))
+                if moment.tzinfo is None:
+                    moment = moment.replace(tzinfo=timezone.utc)
+                return moment.astimezone(timezone.utc)
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            pass
+
     path = Path(database_path)
     if not path.exists():
         return None
