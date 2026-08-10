@@ -182,8 +182,10 @@
     <script>
       (function () {
         var statusUrls = [
-          "/data-status.json",
+          // Prefer GitHub main — Cloudflare can keep a stale cached copy of
+          // /data-status.json even after automated refresh commits.
           "https://raw.githubusercontent.com/Leoma9/earnings-intelligence/main/site/data-status.json",
+          "/data-status.json?ts=" + Date.now(),
         ];
 
         function renderStatus(payload) {
