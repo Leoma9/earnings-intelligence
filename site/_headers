@@ -1,0 +1,4 @@
+# Prevent CDN caching of the public refresh stamp so the landing page
+# stays aligned with GitHub Actions refreshes and the Streamlit app.
+/data-status.json
+  Cache-Control: no-store, max-age=0, must-revalidate
