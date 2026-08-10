@@ -119,17 +119,35 @@ class DashboardDataTests(unittest.TestCase):
         from datetime import datetime, timezone
         from pathlib import Path
         from tempfile import TemporaryDirectory
+        import json
 
-        self.assertIsNone(get_last_data_refresh_at(Path("/no/such/db.sqlite")))
+        missing = Path("/no/such/path")
+        self.assertIsNone(
+            get_last_data_refresh_at(missing / "db.sqlite", status_path=missing / "status.json")
+        )
         self.assertIsNone(format_last_data_refresh(None))
 
         with TemporaryDirectory() as temp_dir:
             db_path = Path(temp_dir) / "metrics.db"
             db_path.write_bytes(b"")
-            moment = get_last_data_refresh_at(db_path)
+            moment = get_last_data_refresh_at(db_path, status_path=Path(temp_dir) / "missing.json")
             self.assertIsNotNone(moment)
             assert moment is not None
             self.assertEqual(moment.tzinfo, timezone.utc)
+
+            status_path = Path(temp_dir) / "data-status.json"
+            status_path.write_text(
+                json.dumps(
+                    {"refreshed_at": "2026-08-03T17:17:28.250462+00:00", "stamp_et": "Aug 3 at 1:17 PM EDT"}
+                ),
+                encoding="utf-8",
+            )
+            # Status file wins over DB mtime so landing + app share one stamp.
+            from_status = get_last_data_refresh_at(db_path, status_path=status_path)
+            self.assertEqual(
+                from_status,
+                datetime(2026, 8, 3, 17, 17, 28, 250462, tzinfo=timezone.utc),
+            )
 
         label = format_last_data_refresh(
             datetime(2026, 7, 14, 13, 0, tzinfo=timezone.utc),
