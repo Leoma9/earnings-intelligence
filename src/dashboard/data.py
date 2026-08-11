@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import calendar as calendar_module
 import json
+import time
+import urllib.error
+import urllib.request
 from datetime import date, datetime, timezone
 from pathlib import Path
 
 import pandas as pd
 
-from config.settings import DATABASE_FILE, DATA_STATUS_FILE
+from config.settings import DATABASE_FILE, DATA_STATUS_FILE, PUBLIC_DATA_STATUS_URL
 from src.storage.sqlite_store import SQLiteStore, market_today
 
 # Tickers not on Yahoo's trending list are treated as one slot below the
@@ -55,31 +58,93 @@ _SECTOR_INFLUENCERS: dict[str, tuple[str, ...]] = {
 
 _SENTIMENT_SORT = {"bearish": 0, "mixed": 1, "bullish": 2, "unknown": 3}
 _HEAT_SORT = {"high": 0, "mid": 1, "low": 2, "none": 3}
+_REMOTE_STATUS_CACHE: tuple[float, datetime | None] | None = None
+_REMOTE_STATUS_TTL_SECONDS = 60.0
+
+
+def _parse_refreshed_at(payload: object) -> datetime | None:
+    """Extract a UTC refresh timestamp from a data-status payload."""
+    if not isinstance(payload, dict):
+        return None
+    raw = payload.get("refreshed_at")
+    if not raw:
+        return None
+    moment = datetime.fromisoformat(str(raw))
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(timezone.utc)
+
+
+def _read_local_data_status(status_path: Path) -> datetime | None:
+    """Read refreshed_at from a local data-status.json file."""
+    if not status_path.exists():
+        return None
+    try:
+        payload = json.loads(status_path.read_text(encoding="utf-8"))
+        return _parse_refreshed_at(payload)
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        return None
+
+
+def _fetch_remote_data_status(
+    url: str = PUBLIC_DATA_STATUS_URL,
+    *,
+    timeout: float = 2.0,
+    use_cache: bool = True,
+) -> datetime | None:
+    """Fetch refreshed_at from the public GitHub status URL (landing-page source)."""
+    global _REMOTE_STATUS_CACHE
+    now = time.monotonic()
+    if use_cache and _REMOTE_STATUS_CACHE is not None:
+        cached_at, cached_value = _REMOTE_STATUS_CACHE
+        if now - cached_at < _REMOTE_STATUS_TTL_SECONDS:
+            return cached_value
+
+    try:
+        request = urllib.request.Request(
+            url,
+            headers={"Cache-Control": "no-cache", "User-Agent": "MarketsLite/1.0"},
+        )
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        moment = _parse_refreshed_at(payload)
+    except (
+        urllib.error.URLError,
+        TimeoutError,
+        OSError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+    ):
+        moment = None
+
+    if use_cache:
+        _REMOTE_STATUS_CACHE = (now, moment)
+    return moment
 
 
 def get_last_data_refresh_at(
     database_path: Path | str = DATABASE_FILE,
     status_path: Path | str = DATA_STATUS_FILE,
+    *,
+    fetch_remote: bool = True,
+    remote_url: str = PUBLIC_DATA_STATUS_URL,
 ) -> datetime | None:
     """Return when data was last refreshed (UTC).
 
-    Prefers ``site/data-status.json`` (written by the refresh pipeline and shown
-    on marketslite.com) so the marketing site and the Streamlit homepage share
-    one stamp. Falls back to the SQLite file mtime when the status file is
-    missing.
+    Prefers the same public GitHub ``data-status.json`` the marketing site
+    reads, so marketslite.com and ``/app`` show one stamp even when Streamlit
+    redeploys lag behind Actions. Falls back to the local status file, then
+    the SQLite mtime.
     """
-    status = Path(status_path)
-    if status.exists():
-        try:
-            payload = json.loads(status.read_text(encoding="utf-8"))
-            raw = payload.get("refreshed_at")
-            if raw:
-                moment = datetime.fromisoformat(str(raw))
-                if moment.tzinfo is None:
-                    moment = moment.replace(tzinfo=timezone.utc)
-                return moment.astimezone(timezone.utc)
-        except (OSError, TypeError, ValueError, json.JSONDecodeError):
-            pass
+    if fetch_remote:
+        remote = _fetch_remote_data_status(remote_url)
+        if remote is not None:
+            return remote
+
+    local = _read_local_data_status(Path(status_path))
+    if local is not None:
+        return local
 
     path = Path(database_path)
     if not path.exists():

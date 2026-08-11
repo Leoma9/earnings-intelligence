@@ -8,6 +8,10 @@ RAW_DIR = DATA_DIR / "raw"
 PROCESSED_DIR = DATA_DIR / "processed"
 DATABASE_FILE = DATA_DIR / "earnings_intelligence.db"
 DATA_STATUS_FILE = PROJECT_ROOT / "site" / "data-status.json"
+# Same URL the marketing site uses so /app and marketslite.com share one stamp.
+PUBLIC_DATA_STATUS_URL = (
+    "https://raw.githubusercontent.com/Leoma9/earnings-intelligence/main/site/data-status.json"
+)
 
 EARNINGS_LOOKAHEAD_DAYS = 30
 SOCIAL_LOOKBACK_DAYS = 90
