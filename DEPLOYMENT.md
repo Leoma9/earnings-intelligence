@@ -256,6 +256,6 @@ tier only provides the `*.streamlit.app` subdomain.
 |---|---|---|
 | Build fails installing a package | Python version mismatch | Redeploy with a different Python version in Advanced settings (Community Cloud ignores `runtime.txt`) |
 | "No dashboard data is available" on a fresh deploy | `data/earnings_intelligence.db` wasn't committed, or was emptied locally before pushing | Run `python scripts/refresh_data.py` locally, then commit and push the database file |
-| Data stamp looks days old | Scheduled Action failed to commit, Streamlit hasn’t redeployed yet, or a CDN cached `site/data-status.json` | Check **Actions → Earnings Data Refresh** for green runs + an `Automated data refresh` commit on `main`; landing and `/app` both prefer GitHub’s `data-status.json` for the caption |
+| Data stamp looks days old | Scheduled Action failed to commit, Streamlit hasn’t redeployed yet, or a CDN cached `site/data-status.json` | Check **Actions → Earnings Data Refresh** for green runs + an `Automated data refresh` commit on `main`; the site root embed and Streamlit caption both prefer GitHub’s `data-status.json` |
 | Push to GitHub asks for a password and rejects it | GitHub no longer accepts account passwords over plain Git | Use a Personal Access Token, or `gh auth login` |
 | App stuck "Oh no, error running app" | Check the **Manage app** logs in the bottom-right of the site for the Python traceback | Fix locally, then `git push` again |

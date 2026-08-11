@@ -7,7 +7,7 @@
     <title>MarketsLite — Attention ahead of earnings</title>
     <meta
       name="description"
-      content="MarketsLite ranks companies by investor attention before earnings — StockTwits, Yahoo trends, volume, and price — so you know what prints matter this week."
+      content="Live MarketsLite dashboard — companies ranked by investor attention ahead of earnings."
     />
     <link rel="canonical" href="https://marketslite.com/" />
     <meta property="og:type" content="website" />
@@ -27,207 +27,49 @@
     />
     <meta name="twitter:image" content="https://marketslite.com/og-image.png" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap"
-      rel="stylesheet"
-    />
     <style>
-      :root {
-        --bg: #0b1120;
-        --text: #f3f7ff;
-        --muted: #9fb0cc;
-        --accent: #4f8cff;
-        --line: #23304d;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
       html,
       body {
         margin: 0;
-        min-height: 100%;
-        background:
-          radial-gradient(1200px 600px at 10% -10%, #1a2744 0%, transparent 55%),
-          radial-gradient(900px 500px at 100% 0%, #152033 0%, transparent 50%),
-          var(--bg);
-        color: var(--text);
-        font-family: "DM Sans", sans-serif;
+        height: 100%;
+        overflow: hidden;
+        background: #0b1120;
+        color-scheme: dark;
       }
 
-      .page {
-        max-width: 920px;
-        margin: 0 auto;
-        padding: 4.5rem 1.5rem 3rem;
-        min-height: calc(100vh - 6rem);
-        display: flex;
-        flex-direction: column;
+      .frame-wrap {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #0b1120;
       }
 
-      .hero {
-        flex: 1;
-      }
-
-      .brand {
-        font-family: "Instrument Serif", Georgia, serif;
-        font-size: clamp(3rem, 8vw, 4.75rem);
-        line-height: 0.95;
-        margin: 0 0 1.25rem;
-        letter-spacing: -0.02em;
-      }
-
-      .headline {
-        font-size: clamp(1.25rem, 3vw, 1.65rem);
-        font-weight: 500;
-        margin: 0 0 0.75rem;
-        max-width: 18ch;
-        line-height: 1.25;
-      }
-
-      .support {
-        color: var(--muted);
-        font-size: 1.05rem;
-        line-height: 1.5;
-        max-width: 36rem;
-        margin: 0 0 0.65rem;
-      }
-
-      .refresh-note {
-        color: #7f8aa3;
-        font-size: 0.9rem;
-        margin: 0 0 1.75rem;
-      }
-
-      .cta {
-        display: inline-block;
-        background: var(--accent);
-        color: #fff;
-        text-decoration: none;
-        font-weight: 700;
-        padding: 0.85rem 1.35rem;
-        border-radius: 10px;
-      }
-
-      .cta:hover {
-        filter: brightness(1.08);
-      }
-
-      .site-footer {
-        margin-top: 3.5rem;
-        padding-top: 1.5rem;
-        border-top: 1px solid var(--line);
-        font-size: 0.85rem;
-        color: var(--muted);
-        line-height: 1.5;
-      }
-
-      .site-footer nav {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        margin-bottom: 0.85rem;
-      }
-
-      .site-footer a {
-        color: var(--muted);
-        text-decoration: none;
-      }
-
-      .site-footer a:hover {
-        color: var(--text);
-      }
-
-      .disclaimer {
-        color: #7f8aa3;
-        font-size: 0.8rem;
-        max-width: 40rem;
-        margin: 0;
+      /*
+        Slight overscan clips Streamlit's rounded embed chrome without eating
+        mobile side padding. Extra height at the bottom hides the Built with
+        Streamlit / Fullscreen strip; the app adds bottom padding so the last
+        controls stay above that clip.
+      */
+      iframe {
+        position: absolute;
+        top: -6px;
+        left: -6px;
+        width: calc(100% + 12px);
+        height: calc(100% + 56px);
+        border: 0;
+        background: #0b1120;
       }
     </style>
   </head>
   <body>
-    <main class="page">
-      <div class="hero">
-        <h1 class="brand">MarketsLite</h1>
-        <p class="headline">See what's picking up steam this week</p>
-        <p class="support">
-          Tracking investor interest ahead of earnings so you can get ahead of
-          the crowd
-        </p>
-        <p class="refresh-note" id="refresh-note">
-          Dashboard data refreshes about every 3 hours.
-          <a href="/about/" style="color: var(--accent); text-decoration: none"
-            >How it works</a
-          >
-        </p>
-        <a class="cta" href="/app">Open dashboard</a>
-      </div>
-
-      <footer class="site-footer">
-        <nav aria-label="Footer">
-          <a href="/app">Dashboard</a>
-          <a href="/about/">About</a>
-          <a href="/about/#contact">Contact</a>
-        </nav>
-        <p class="disclaimer">
-          MarketsLite is for informational purposes only and is not investment
-          advice. Attention and social interest are not fundamentals. Do your
-          own research.
-        </p>
-      </footer>
-    </main>
-    <script>
-      (function () {
-        var statusUrls = [
-          // Prefer GitHub main — Cloudflare can keep a stale cached copy of
-          // /data-status.json even after automated refresh commits.
-          "https://raw.githubusercontent.com/Leoma9/earnings-intelligence/main/site/data-status.json",
-          "/data-status.json?ts=" + Date.now(),
-        ];
-
-        function renderStatus(payload) {
-          if (!payload || !payload.refreshed_at || !payload.stamp_et) return;
-          var note = document.getElementById("refresh-note");
-          if (!note) return;
-          var refreshed = new Date(payload.refreshed_at);
-          if (isNaN(refreshed.getTime())) return;
-          var hoursAgo = Math.max(
-            0,
-            Math.floor((Date.now() - refreshed.getTime()) / 3600000)
-          );
-          var age =
-            hoursAgo <= 0
-              ? "less than 1 hour ago"
-              : hoursAgo === 1
-                ? "1 hour ago"
-                : hoursAgo + " hours ago";
-          note.textContent =
-            "Data last refreshed " + payload.stamp_et + " (" + age + ") · ";
-          var link = document.createElement("a");
-          link.href = "/about/";
-          link.textContent = "How it works";
-          link.style.color = "var(--accent)";
-          link.style.textDecoration = "none";
-          note.appendChild(link);
-        }
-
-        function loadStatus(urls) {
-          if (!urls.length) return;
-          fetch(urls[0], { cache: "no-store" })
-            .then(function (response) {
-              return response.ok ? response.json() : Promise.reject();
-            })
-            .then(renderStatus)
-            .catch(function () {
-              loadStatus(urls.slice(1));
-            });
-        }
-
-        loadStatus(statusUrls);
-      })();
-    </script>
+    <div class="frame-wrap">
+      <iframe
+        src="https://marketslite.streamlit.app/?embed=true"
+        title="MarketsLite Dashboard"
+        allow="clipboard-write"
+        loading="eager"
+      ></iframe>
+    </div>
   </body>
 </html>

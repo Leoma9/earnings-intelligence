@@ -3,57 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="dark" />
-    <title>MarketsLite Dashboard</title>
-    <meta
-      name="description"
-      content="Live MarketsLite dashboard — companies ranked by investor attention ahead of earnings."
-    />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <meta name="robots" content="noindex" />
-    <style>
-      html,
-      body {
-        margin: 0;
-        height: 100%;
-        overflow: hidden;
-        background: #0b1120;
-        color-scheme: dark;
-      }
-
-      .frame-wrap {
-        position: relative;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        background: #0b1120;
-      }
-
-      /*
-        Slight overscan clips Streamlit's rounded embed chrome without eating
-        mobile side padding. Extra height at the bottom hides the Built with
-        Streamlit / Fullscreen strip; the app adds bottom padding so the last
-        controls stay above that clip.
-      */
-      iframe {
-        position: absolute;
-        top: -6px;
-        left: -6px;
-        width: calc(100% + 12px);
-        height: calc(100% + 56px);
-        border: 0;
-        background: #0b1120;
-      }
-    </style>
+    <title>MarketsLite</title>
+    <link rel="canonical" href="https://marketslite.com/" />
+    <meta http-equiv="refresh" content="0; url=/" />
+    <script>
+      location.replace("/");
+    </script>
   </head>
-  <body>
-    <div class="frame-wrap">
-      <iframe
-        src="https://marketslite.streamlit.app/?embed=true"
-        title="MarketsLite Dashboard"
-        allow="clipboard-write"
-        loading="eager"
-      ></iframe>
-    </div>
+  <body style="background: #0b1120; color: #f3f7ff; font-family: sans-serif">
+    <p><a href="/" style="color: #4f8cff">Continue to MarketsLite</a></p>
   </body>
 </html>
