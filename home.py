@@ -30,6 +30,7 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+        @import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;700&display=swap");
         :root, html, body, .stApp, [data-testid="stAppViewContainer"] {
             --st-base-radius: 0 !important;
             --st-button-radius: 0 !important;
@@ -53,10 +54,37 @@ st.markdown(
             border-radius: 0 !important;
         }
         [data-testid="stMainBlockContainer"] {
-            padding-top: 2rem;
+            padding-top: 1.25rem;
             padding-bottom: 5rem;
         }
         .stApp { background: #0b1120; }
+        .hero-block {
+            margin: 0 0 0.85rem 0;
+            max-width: 40rem;
+        }
+        .hero-brand {
+            font-family: "Instrument Serif", Georgia, serif;
+            font-size: clamp(2.4rem, 6vw, 3.4rem);
+            line-height: 0.95;
+            letter-spacing: -0.02em;
+            color: #f3f7ff;
+            margin: 0 0 0.85rem 0;
+        }
+        .hero-headline {
+            font-family: "DM Sans", sans-serif;
+            font-size: clamp(1.15rem, 2.6vw, 1.45rem);
+            font-weight: 500;
+            line-height: 1.3;
+            color: #f3f7ff;
+            margin: 0 0 0.45rem 0;
+        }
+        .hero-support {
+            font-family: "DM Sans", sans-serif;
+            color: #9fb0cc;
+            font-size: 1rem;
+            line-height: 1.5;
+            margin: 0;
+        }
         [data-testid="stMetric"] {
             background: #121c31; border: 1px solid #23304d; border-radius: 0;
             padding: 14px;
@@ -570,16 +598,25 @@ earnings = data["earnings"]
 most_mentioned = data["most_mentioned"]
 yahoo_rank_growth = data["yahoo_rank_growth"]
 
-st.title("Most Watched Upcoming Earnings")
-st.caption(
-    "Companies ranked based on investor search activity and mentions "
-    "ahead of earnings reports"
+st.markdown(
+    """
+    <div class="hero-block">
+      <div class="hero-brand">MarketsLite</div>
+      <div class="hero-headline">See what's picking up steam this week</div>
+      <div class="hero-support">
+        Tracking investor interest ahead of earnings so you can get ahead of
+        the crowd
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
 refresh_label = format_last_data_refresh(get_last_data_refresh_at())
 if refresh_label:
     st.caption(refresh_label)
 else:
     st.caption("Snapshot age unavailable")
+st.page_link("about.py", label="How it works →")
 
 if attention.empty:
     st.info(
@@ -656,6 +693,6 @@ else:
 st.divider()
 st.caption(
     "MarketsLite is for informational purposes only and is not investment advice. "
-    "Attention and social interest are not fundamentals."
+    "Attention and social interest are not fundamentals. "
+    "Do your own research."
 )
-st.page_link("about.py", label="How it works →")
